@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Truck } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useToast } from "@/hooks/use-toast";
@@ -13,11 +13,14 @@ interface AddProductModalProps {
 
 const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalProps) => {
   const [formData, setFormData] = useState({
+    code: '',
     name: '',
     category: '',
     purchasePrice: 0,
     interestPercent: 0,
-    stock: 0
+    stock: 0,
+    supplierName: '',
+    invoiceNumber: ''
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -88,17 +91,10 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
 
     try {
       const sellingPrice = formData.purchasePrice + (formData.purchasePrice * formData.interestPercent / 100);
-      
-      console.log('Adding product with data:', {
-        name: formData.name,
-        category: formData.category,
-        purchasePrice: formData.purchasePrice,
-        interestPercent: formData.interestPercent,
-        price: sellingPrice,
-        stock: formData.stock
-      });
+      const productCode = formData.code.trim() || `PRD-${Date.now().toString().slice(-6)}`;
 
-      await addDoc(collection(db, 'products'), {
+      const productRef = await addDoc(collection(db, 'products'), {
+        code: productCode,
         name: formData.name.trim(),
         category: formData.category,
         purchasePrice: formData.purchasePrice,
@@ -109,15 +105,36 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
         updatedAt: new Date()
       });
 
-      console.log('Product added successfully');
+      // Auto-create Accounts Payable record for initial stock
+      if (formData.stock > 0) {
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+
+        await addDoc(collection(db, 'payables'), {
+          supplierName: formData.supplierName.trim() || 'General Supplier',
+          invoiceNumber: formData.invoiceNumber.trim() || `INV-${Date.now().toString().slice(-6)}`,
+          amountOwed: formData.purchasePrice * formData.stock,
+          dueDate: dueDate.toISOString().split('T')[0],
+          status: 'Unpaid',
+          productId: productRef.id,
+          productName: formData.name.trim(),
+          quantityAdded: formData.stock,
+          unitCost: formData.purchasePrice,
+          createdAt: new Date(),
+          paidAt: null
+        });
+      }
 
       // Reset form
       setFormData({
+        code: '',
         name: '',
         category: '',
         purchasePrice: 0,
         interestPercent: 0,
-        stock: 0
+        stock: 0,
+        supplierName: '',
+        invoiceNumber: ''
       });
 
       // Close modal and refresh products
@@ -126,7 +143,9 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
 
       toast({
         title: "Success",
-        description: "Product added successfully!"
+        description: formData.stock > 0 
+          ? "Product added & payable record generated!" 
+          : "Product added successfully!"
       });
 
     } catch (error) {
@@ -154,6 +173,19 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Product Code / SKU <span className="text-gray-400 font-normal">(Optional, auto-generated if blank)</span>
+            </label>
+            <input
+              type="text"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+              placeholder="e.g. PRD-1001 or scan barcode"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Product Name *
@@ -220,7 +252,7 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Stock Quantity *
+              Initial Stock Quantity *
             </label>
             <input
               type="number"
@@ -232,6 +264,32 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
               required
             />
           </div>
+
+          {/* Supplier Info for Payables */}
+          {formData.stock > 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-3">
+              <div className="flex items-center text-xs font-semibold text-slate-700">
+                <Truck size={14} className="mr-1.5 text-blue-600" />
+                Restock Supplier Details (Accounts Payable)
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={formData.supplierName}
+                  onChange={(e) => setFormData({ ...formData, supplierName: e.target.value })}
+                  placeholder="Supplier Name"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded bg-white"
+                />
+                <input
+                  type="text"
+                  value={formData.invoiceNumber}
+                  onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                  placeholder="Invoice #"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded bg-white"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
             <strong>Selling Price: birr{(formData.purchasePrice + (formData.purchasePrice * formData.interestPercent / 100)).toFixed(2)}</strong>

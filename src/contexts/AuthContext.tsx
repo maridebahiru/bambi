@@ -16,6 +16,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  demoLogin: (role?: 'admin' | 'seller') => void;
   logout: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
 }
@@ -35,7 +36,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string) => {
+  const createFallbackProfile = (u: User): UserProfile => {
+    const fallbackName = u.displayName || u.email?.split('@')[0] || 'User';
+    return {
+      uid: u.uid,
+      email: u.email || 'user@example.com',
+      role: 'admin',
+      name: fallbackName,
+    };
+  };
+
+  const fetchUserProfile = async (userId: string, currentUser?: User) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
@@ -44,26 +55,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return profileData;
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error fetching user profile from Firestore:', error);
+    }
+    // Fallback profile if Firestore document does not exist or fetch fails
+    const activeUser = currentUser || auth.currentUser;
+    if (activeUser) {
+      const fallback = createFallbackProfile(activeUser);
+      setUserProfile(fallback);
+      return fallback;
     }
     return null;
   };
 
   const refreshUserProfile = async () => {
     if (user) {
-      await fetchUserProfile(user.uid);
+      await fetchUserProfile(user.uid, user);
     }
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user);
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      console.log('Auth state changed:', u);
+      setUser(u);
       
-      if (user) {
-        await fetchUserProfile(user.uid);
+      if (u) {
+        await fetchUserProfile(u.uid, u);
       } else {
-        setUserProfile(null);
+        // Only clear profile if not in demo mode
+        if (user?.uid !== 'demo-user-id') {
+          setUserProfile(null);
+        }
       }
       
       setLoading(false);
@@ -76,15 +97,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log('Login successful:', result.user.email);
-      // The onAuthStateChanged listener will handle fetching the profile
+      await fetchUserProfile(result.user.uid, result.user);
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
     }
   };
 
+  const demoLogin = (role: 'admin' | 'seller' = 'admin') => {
+    const demoUser = {
+      uid: 'demo-user-id',
+      email: role === 'admin' ? 'admin@demo.com' : 'seller@demo.com',
+      displayName: role === 'admin' ? 'Demo Admin' : 'Demo Seller',
+      emailVerified: true,
+      isAnonymous: false,
+    } as unknown as User;
+
+    const demoProfile: UserProfile = {
+      uid: 'demo-user-id',
+      email: role === 'admin' ? 'admin@demo.com' : 'seller@demo.com',
+      role: role,
+      name: role === 'admin' ? 'Demo Admin' : 'Demo Seller',
+    };
+
+    setUser(demoUser);
+    setUserProfile(demoProfile);
+    setLoading(false);
+  };
+
   const logout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.log('Signout notice:', e);
+    }
+    setUser(null);
+    setUserProfile(null);
   };
 
   const value = {
@@ -92,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userProfile,
     loading,
     login,
+    demoLogin,
     logout,
     refreshUserProfile,
   };

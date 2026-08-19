@@ -9,6 +9,7 @@ import {
   User,
   Receipt,
   Database,
+  Calculator,
   LogOut,
   Menu,
   X
@@ -28,6 +29,7 @@ const Sidebar = ({ userRole }: SidebarProps) => {
     { icon: Database, label: 'Dashboard', path: '/' },
     { icon: Package, label: 'Products', path: '/products' },
     { icon: ShoppingCart, label: 'Sales', path: '/sales' },
+    { icon: Calculator, label: 'Accounting', path: '/accounting' },
     { icon: Receipt, label: 'Reports', path: '/reports' },
     { icon: Users, label: 'Users', path: '/users' },
     { icon: Settings, label: 'Settings', path: '/settings' },

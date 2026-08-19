@@ -10,7 +10,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
-  const { login } = useAuth();
+  const { login, demoLogin } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +20,7 @@ const Login = () => {
     try {
       await login(email, password);
     } catch (error: any) {
-      setError('Failed to log in. Please check your credentials.');
+      setError(error.message || 'Failed to log in. Please check your credentials.');
       console.error('Login error:', error);
     } finally {
       setLoading(false);
@@ -36,11 +36,12 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900"> Electronics Shop Managment</h1>
-           </div>
+          <h1 className="text-2xl font-bold text-gray-900">Electronics Shop Management</h1>
+          <p className="text-sm text-gray-500 mt-1">Sign in to access your shop dashboard</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -78,7 +79,7 @@ const Login = () => {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -86,17 +87,44 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center font-medium"
           >
             <LogIn size={16} className="mr-2" />
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-gray-500">Or Quick Demo Login</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => demoLogin('admin')}
+            className="w-full py-2 px-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 font-medium text-sm transition-colors text-center"
+          >
+            Demo Admin
+          </button>
+          <button
+            type="button"
+            onClick={() => demoLogin('seller')}
+            className="w-full py-2 px-3 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 font-medium text-sm transition-colors text-center"
+          >
+            Demo Seller
+          </button>
+        </div>
+
+        <div className="text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}
             <button
+              type="button"
               onClick={() => setShowSignUp(true)}
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
@@ -104,7 +132,6 @@ const Login = () => {
             </button>
           </p>
         </div>
-
       </div>
     </div>
   );

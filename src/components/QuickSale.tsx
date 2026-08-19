@@ -8,6 +8,7 @@ import { generateSaleReceipt } from './PDFGenerator';
 
 interface Product {
   id: string;
+  code?: string;
   name: string;
   price: number;
   stock: number;
@@ -37,7 +38,7 @@ const QuickSale = () => {
     'Covers', 'Chargers', 'Electrical Tools'
   ];
 
-  const paymentMethods = ['CBE Mobile Banking', 'Telebirr', 'Amhara Bank', 'Awash Bank', 'Wegagen Bank', 'Oromia Bank', 'Abisiniya Bank', 'Other'];
+  const paymentMethods = ['Cash', 'Loan / Credit', 'CBE Mobile Banking', 'Telebirr', 'Amhara Bank', 'Awash Bank', 'Wegagen Bank', 'Oromia Bank', 'Abisiniya Bank', 'Other'];
 
   useEffect(() => {
     fetchProducts();
@@ -69,8 +70,10 @@ const QuickSale = () => {
     let filtered = products;
 
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+        product.name.toLowerCase().includes(term) ||
+        (product.code ? product.code.toLowerCase().includes(term) : false)
       );
     }
 
@@ -242,7 +245,14 @@ const QuickSale = () => {
             <div key={product.id} className="p-3 border rounded-lg hover:bg-gray-50">
               <div className="flex justify-between items-center">
                 <div>
-                  <h4 className="font-medium">{product.name}</h4>
+                  <h4 className="font-medium flex items-center gap-1.5">
+                    {product.code && (
+                      <span className="font-mono text-xs px-1.5 py-0.5 bg-gray-100 border text-gray-600 rounded">
+                        {product.code}
+                      </span>
+                    )}
+                    <span>{product.name}</span>
+                  </h4>
                   <p className="text-sm text-gray-500">{product.category}</p>
                 </div>
                 <div className="text-right">

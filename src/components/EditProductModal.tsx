@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { updateDoc, doc } from 'firebase/firestore';
+import { updateDoc, addDoc, collection, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
+  code?: string;
   name: string;
   category: string;
   purchasePrice: number;
@@ -24,6 +25,7 @@ interface EditProductModalProps {
 
 const EditProductModal = ({ isOpen, onClose, onProductUpdated, product }: EditProductModalProps) => {
   const [formData, setFormData] = useState({
+    code: '',
     name: '',
     category: '',
     purchasePrice: 0,
@@ -49,6 +51,7 @@ const EditProductModal = ({ isOpen, onClose, onProductUpdated, product }: EditPr
   useEffect(() => {
     if (product) {
       setFormData({
+        code: product.code || '',
         name: product.name,
         category: product.category,
         purchasePrice: product.purchasePrice || 0,
@@ -95,8 +98,10 @@ const EditProductModal = ({ isOpen, onClose, onProductUpdated, product }: EditPr
 
     try {
       const sellingPrice = formData.purchasePrice + (formData.purchasePrice * formData.interestPercent / 100);
+      const productCode = formData.code.trim() || `PRD-${Date.now().toString().slice(-6)}`;
       
       await updateDoc(doc(db, 'products', product.id), {
+        code: productCode,
         name: formData.name.trim(),
         category: formData.category,
         purchasePrice: formData.purchasePrice,
@@ -106,12 +111,35 @@ const EditProductModal = ({ isOpen, onClose, onProductUpdated, product }: EditPr
         updatedAt: new Date()
       });
 
+      // Auto-create payable if stock is increased
+      if (formData.stock > product.stock) {
+        const addedQty = formData.stock - product.stock;
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+
+        await addDoc(collection(db, 'payables'), {
+          supplierName: 'Restock Supplier',
+          invoiceNumber: `RESTOCK-${Date.now().toString().slice(-6)}`,
+          amountOwed: formData.purchasePrice * addedQty,
+          dueDate: dueDate.toISOString().split('T')[0],
+          status: 'Unpaid',
+          productId: product.id,
+          productName: formData.name.trim(),
+          quantityAdded: addedQty,
+          unitCost: formData.purchasePrice,
+          createdAt: new Date(),
+          paidAt: null
+        });
+      }
+
       onClose();
       onProductUpdated();
 
       toast({
         title: "Success",
-        description: "Product updated successfully!"
+        description: formData.stock > product.stock
+          ? `Product updated & payable for +${formData.stock - product.stock} units generated!`
+          : "Product updated successfully!"
       });
 
     } catch (error) {
@@ -139,6 +167,19 @@ const EditProductModal = ({ isOpen, onClose, onProductUpdated, product }: EditPr
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Product Code / SKU
+            </label>
+            <input
+              type="text"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+              placeholder="e.g. PRD-1001"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Product Name *

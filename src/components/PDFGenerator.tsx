@@ -16,7 +16,11 @@ interface SaleData {
   totalPrice?: number;
   buyerName: string;
   timestamp: Date;
+  subtotal?: number;
+  vatRate?: number;
+  vatAmount?: number;
   totalAmount?: number;
+  paymentMethod?: string;
 }
 
 export const generateSaleReceipt = (saleData: SaleData, userProfile: any) => {
@@ -29,7 +33,7 @@ export const generateSaleReceipt = (saleData: SaleData, userProfile: any) => {
   // Store info
   doc.setFontSize(12);
   doc.text('EthioMerkato Store', 20, 40);
-  doc.text('Sales Management System', 20, 50);
+  doc.text('Electronics Store Management', 20, 50);
   
   // Receipt details
   doc.text(`Receipt Date: ${saleData.timestamp.toLocaleDateString()}`, 20, 70);
@@ -62,32 +66,44 @@ export const generateSaleReceipt = (saleData: SaleData, userProfile: any) => {
     saleData.items.forEach((item) => {
       doc.text(item.productName, 20, yPosition);
       doc.text(item.quantity.toString(), 80, yPosition);
-      doc.text(`$${item.unitPrice.toFixed(2)}`, 110, yPosition);
-      doc.text(`$${item.totalPrice.toFixed(2)}`, 150, yPosition);
+      doc.text(`Br ${item.unitPrice.toFixed(2)}`, 110, yPosition);
+      doc.text(`Br ${item.totalPrice.toFixed(2)}`, 150, yPosition);
       grandTotal += item.totalPrice;
       yPosition += 15;
     });
   } else {
-    // Single item (backward compatibility)
+    // Single item
     doc.text(saleData.productName || '', 20, yPosition);
     doc.text((saleData.quantity || 0).toString(), 80, yPosition);
-    doc.text(`$${(saleData.unitPrice || 0).toFixed(2)}`, 110, yPosition);
-    doc.text(`$${(saleData.totalPrice || 0).toFixed(2)}`, 150, yPosition);
+    doc.text(`Br ${(saleData.unitPrice || 0).toFixed(2)}`, 110, yPosition);
+    doc.text(`Br ${(saleData.totalPrice || 0).toFixed(2)}`, 150, yPosition);
     grandTotal = saleData.totalPrice || 0;
     yPosition += 15;
   }
   
-  // Total line
+  // Line separator
   doc.line(20, yPosition, 190, yPosition);
   yPosition += 15;
   
-  // Total amount
+  // Tax & Totals Breakdown
+  doc.setFontSize(11);
+  const subtotal = saleData.subtotal || grandTotal;
+  const vatAmount = saleData.vatAmount || 0;
+  const vatRate = saleData.vatRate || 0;
+  const finalTotal = saleData.totalAmount || (subtotal + vatAmount);
+
+  doc.text(`Subtotal: Br ${subtotal.toFixed(2)}`, 140, yPosition);
+  yPosition += 10;
+  if (vatRate > 0) {
+    doc.text(`VAT (${vatRate}%): Br ${vatAmount.toFixed(2)}`, 140, yPosition);
+    yPosition += 10;
+  }
+
   doc.setFontSize(14);
-  const finalTotal = saleData.totalAmount || grandTotal;
-  doc.text(`TOTAL AMOUNT: $${finalTotal.toFixed(2)}`, 105, yPosition, { align: 'center' });
+  doc.text(`TOTAL AMOUNT: Br ${finalTotal.toFixed(2)}`, 105, yPosition + 5, { align: 'center' });
   
   // Footer
-  yPosition += 25;
+  yPosition += 30;
   doc.setFontSize(10);
   doc.text('Thank you for your Purchase!', 105, yPosition, { align: 'center' });
   doc.text('Visit us again soon!', 105, yPosition + 10, { align: 'center' });

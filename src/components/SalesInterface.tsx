@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Receipt, User, Plus, Minus, Trash2 } from 'lucide-react';
+import { ShoppingCart, Receipt, User, Plus, Minus, Trash2, Percent } from 'lucide-react';
 import { collection, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateSaleReceipt } from './PDFGenerator';
 import { useToast } from "@/hooks/use-toast";
+import { getTaxSettings, TaxSettings } from '../lib/taxSettings';
 
 interface Product {
   id: string;
+  code?: string;
   name: string;
   price: number;
+  purchasePrice?: number;
   stock: number;
   category: string;
 }
@@ -23,16 +26,28 @@ const SalesInterface = () => {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [buyerName, setBuyerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [initialDeposit, setInitialDeposit] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isVatExempt, setIsVatExempt] = useState(false);
+  const [taxSettings, setTaxSettings] = useState<TaxSettings>({
+    vatEnabled: true,
+    vatRate: 15,
+    incomeTaxRate: 35,
+  });
+
   const { userProfile } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProductsAndTax = async () => {
       try {
+        const settings = await getTaxSettings();
+        setTaxSettings(settings);
+
         const productsSnapshot = await getDocs(collection(db, 'products'));
         const productsData = productsSnapshot.docs.map(doc => ({
           id: doc.id,
@@ -40,11 +55,11 @@ const SalesInterface = () => {
         })) as Product[];
         setProducts(productsData);
       } catch (error) {
-        console.error('Error fetching products:', error);
+        console.error('Error fetching data:', error);
       }
     };
 
-    fetchProducts();
+    fetchProductsAndTax();
   }, []);
 
   const addToCart = () => {
@@ -114,15 +129,43 @@ const SalesInterface = () => {
     setCart(cart.filter(item => item.product.id !== productId));
   };
 
+  const activeVatRate = (taxSettings.vatEnabled && !isVatExempt) ? taxSettings.vatRate : 0;
+  const cartSubtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const cartVatAmount = cartSubtotal * (activeVatRate / 100);
+  const cartGrandTotal = cartSubtotal + cartVatAmount;
+
   const handleSale = async () => {
     if (cart.length === 0 || !userProfile) return;
+
+    // Validate Credit Sale Requirements
+    if (paymentMethod === 'Loan / Credit') {
+      if (!buyerName.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Customer Name is required for Credit / Loan sales.",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (!customerPhone.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Customer Phone Number is required for Credit / Loan sales.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
 
     setLoading(true);
     try {
       const saleTimestamp = new Date();
 
       for (const cartItem of cart) {
-        const totalPrice = cartItem.product.price * cartItem.quantity;
+        const itemSubtotal = cartItem.product.price * cartItem.quantity;
+        const itemVatAmount = itemSubtotal * (activeVatRate / 100);
+        const itemTotalPrice = itemSubtotal + itemVatAmount;
+        const unitCost = cartItem.product.purchasePrice || 0;
 
         await addDoc(collection(db, 'sales'), {
           productId: cartItem.product.id,
@@ -130,8 +173,13 @@ const SalesInterface = () => {
           category: cartItem.product.category,
           quantity: cartItem.quantity,
           unitPrice: cartItem.product.price,
-          totalPrice,
-          buyerName: buyerName || 'Walk-in Customer',
+          unitCost: unitCost,
+          subtotal: itemSubtotal,
+          vatRate: activeVatRate,
+          vatAmount: itemVatAmount,
+          totalPrice: itemTotalPrice,
+          buyerName: buyerName.trim() || 'Walk-in Customer',
+          customerPhone: customerPhone.trim(),
           sellerId: userProfile.uid,
           sellerName: userProfile.name,
           paymentMethod,
@@ -145,6 +193,37 @@ const SalesInterface = () => {
         });
       }
 
+      // Record Accounts Receivable if paymentMethod is 'Loan / Credit'
+      if (paymentMethod === 'Loan / Credit') {
+        const paidNow = Math.min(initialDeposit || 0, cartGrandTotal);
+        const remaining = cartGrandTotal - paidNow;
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+
+        const summaryStr = cart.map(i => `${i.product.name} (x${i.quantity})`).join(', ');
+
+        await addDoc(collection(db, 'receivables'), {
+          customerName: buyerName.trim(),
+          customerPhone: customerPhone.trim(),
+          productNames: summaryStr,
+          totalAmount: cartGrandTotal,
+          amountPaid: paidNow,
+          balanceRemaining: remaining,
+          dueDate: dueDate.toISOString().split('T')[0],
+          status: remaining <= 0 ? 'Paid' : (paidNow > 0 ? 'Partially Paid' : 'Unpaid'),
+          createdAt: saleTimestamp,
+          lastPaymentDate: paidNow > 0 ? saleTimestamp : null,
+          paymentHistory: paidNow > 0 ? [
+            {
+              amount: paidNow,
+              paymentMethod: 'Initial Credit Deposit',
+              date: saleTimestamp.toISOString().split('T')[0],
+              notes: 'Initial down payment at POS checkout'
+            }
+          ] : []
+        });
+      }
+
       generateSaleReceipt({
         items: cart.map(item => ({
           productName: item.product.name,
@@ -154,11 +233,16 @@ const SalesInterface = () => {
         })),
         buyerName: buyerName || 'Walk-in Customer',
         timestamp: saleTimestamp,
-        totalAmount: cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
+        subtotal: cartSubtotal,
+        vatRate: activeVatRate,
+        vatAmount: cartVatAmount,
+        totalAmount: cartGrandTotal
       }, userProfile);
 
       setCart([]);
       setBuyerName('');
+      setCustomerPhone('');
+      setInitialDeposit(0);
 
       const productsSnapshot = await getDocs(collection(db, 'products'));
       const productsData = productsSnapshot.docs.map(doc => ({
@@ -169,7 +253,9 @@ const SalesInterface = () => {
 
       toast({
         title: "Success",
-        description: "Sale processed successfully and receipt generated!"
+        description: paymentMethod === 'Loan / Credit'
+          ? "Credit sale processed & receivable recorded!"
+          : "Sale processed successfully and receipt generated!"
       });
     } catch (error) {
       console.error('Error processing sale:', error);
@@ -184,7 +270,6 @@ const SalesInterface = () => {
   };
 
   const selectedProductData = products.find(p => p.id === selectedProduct);
-  const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -206,7 +291,7 @@ const SalesInterface = () => {
             <option value="">Choose a product...</option>
             {products.map((product) => (
               <option key={product.id} value={product.id}>
-                {product.name} - ${product.price} (Stock: {product.stock})
+                {product.code ? `[${product.code}] ` : ''}{product.name} - Br {product.price} (Stock: {product.stock})
               </option>
             ))}
           </select>
@@ -230,7 +315,7 @@ const SalesInterface = () => {
             <button
               onClick={addToCart}
               disabled={!selectedProduct}
-              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center font-medium"
             >
               <Plus size={16} className="mr-1" />
               Add
@@ -247,6 +332,7 @@ const SalesInterface = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="Cash">Cash</option>
+              <option value="Loan / Credit">Loan / Credit Sale (Customer Debt)</option>
               <option value="CBE Mobile Banking">CBE Mobile Banking</option>
               <option value="Telebirr">Telebirr</option>
               <option value="Amhara Bank">Amhara Bank</option>
@@ -259,6 +345,75 @@ const SalesInterface = () => {
           </div>
         </div>
 
+        {/* Credit Sale Fields */}
+        {paymentMethod === 'Loan / Credit' && (
+          <div className="bg-amber-50/70 border border-amber-200 p-3.5 rounded-lg space-y-3">
+            <div className="text-xs font-bold text-amber-900 uppercase">
+              Credit Sale Details (Accounts Receivable)
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Customer Name *</label>
+                <input
+                  type="text"
+                  value={buyerName}
+                  onChange={(e) => setBuyerName(e.target.value)}
+                  placeholder="Enter full customer name"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Customer Phone # *</label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="e.g. +251 91 123 4567"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Initial Down Payment / Deposit (birr)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={initialDeposit || ''}
+                onChange={(e) => setInitialDeposit(parseFloat(e.target.value) || 0)}
+                placeholder="0.00 (Amount paid in cash/transfer now)"
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+              />
+              <p className="text-[11px] text-amber-800 mt-1">
+                Remaining balance will be automatically tracked under Accounts Receivable.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* VAT Option Toggle */}
+        {taxSettings.vatEnabled && (
+          <div className="flex items-center justify-between p-3 bg-indigo-50/60 border border-indigo-100 rounded-lg text-sm">
+            <div className="flex items-center space-x-2">
+              <Percent className="text-indigo-600" size={16} />
+              <span className="font-medium text-gray-800">
+                Apply VAT ({taxSettings.vatRate}%)
+              </span>
+            </div>
+            <label className="flex items-center cursor-pointer space-x-2">
+              <input
+                type="checkbox"
+                checked={!isVatExempt}
+                onChange={(e) => setIsVatExempt(!e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              <span className="text-xs text-gray-600">{isVatExempt ? 'VAT Exempt' : 'Standard VAT'}</span>
+            </label>
+          </div>
+        )}
+
         {cart.length > 0 && (
           <div className="bg-gray-50 p-4 rounded-lg">
             <h4 className="font-medium text-gray-900 mb-3">Shopping Cart</h4>
@@ -267,7 +422,7 @@ const SalesInterface = () => {
                 <div key={item.product.id} className="flex items-center justify-between bg-white p-2 rounded">
                   <div className="flex-1">
                     <span className="font-medium">{item.product.name}</span>
-                    <span className="text-sm text-gray-600 ml-2">${item.product.price}</span>
+                    <span className="text-sm text-gray-600 ml-2">Br {item.product.price}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -290,43 +445,58 @@ const SalesInterface = () => {
                       <Trash2 size={12} />
                     </button>
                     <span className="font-semibold min-w-[60px] text-right">
-                      ${(item.product.price * item.quantity).toFixed(2)}
+                      Br {(item.product.price * item.quantity).toFixed(2)}
                     </span>
                   </div>
                 </div>
               ))}
-              <div className="border-t pt-2 flex justify-between font-semibold text-lg">
-                <span>Total:</span>
-                <span>${cartTotal.toFixed(2)}</span>
+
+              <div className="border-t pt-2 space-y-1 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>Subtotal:</span>
+                  <span>Br {cartSubtotal.toFixed(2)}</span>
+                </div>
+                {activeVatRate > 0 && (
+                  <div className="flex justify-between text-indigo-600">
+                    <span>VAT ({activeVatRate}%):</span>
+                    <span>Br {cartVatAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-base text-gray-900 pt-1 border-t">
+                  <span>Total Amount:</span>
+                  <span>Br {cartGrandTotal.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Buyer Name (Optional)
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            <input
-              type="text"
-              value={buyerName}
-              onChange={(e) => setBuyerName(e.target.value)}
-              placeholder="Enter buyer name"
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+        {paymentMethod !== 'Loan / Credit' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Buyer Name (Optional)
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                value={buyerName}
+                onChange={(e) => setBuyerName(e.target.value)}
+                placeholder="Enter buyer name"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex space-x-3">
           <button
             onClick={handleSale}
             disabled={cart.length === 0 || loading}
-            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center font-medium"
           >
             <ShoppingCart size={16} className="mr-2" />
-            {loading ? 'Processing...' : `Process Sale ($${cartTotal.toFixed(2)})`}
+            {loading ? 'Processing...' : `Process Sale (Br ${cartGrandTotal.toFixed(2)})`}
           </button>
         </div>
       </div>

@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2 } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, FileSpreadsheet } from 'lucide-react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useToast } from "@/hooks/use-toast";
 import AddProductModal from './AddProductModal';
 import EditProductModal from './EditProductModal';
+import ImportProductsModal from './ImportProductsModal';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Product {
   id: string;
+  code?: string;
   name: string;
   category: string;
   purchasePrice: number;
@@ -22,6 +24,7 @@ const ProductTable = () => {
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -69,7 +72,10 @@ const ProductTable = () => {
   };
 
   const filteredProducts = products.filter(product => {
-    const searchMatch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    const nameMatch = product.name.toLowerCase().includes(term);
+    const codeMatch = product.code ? product.code.toLowerCase().includes(term) : false;
+    const searchMatch = nameMatch || codeMatch;
     const categoryMatch = selectedCategory ? product.category === selectedCategory : true;
     return searchMatch && categoryMatch;
   });
@@ -85,13 +91,22 @@ const ProductTable = () => {
             </div>
             
             {userProfile?.role === 'admin' && (
-              <button 
-                onClick={() => setIsAddModalOpen(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-              >
-                <Plus size={16} className="mr-2" />
-                Add Product
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center shadow-sm"
+                >
+                  <FileSpreadsheet size={16} className="mr-2" />
+                  Import Excel
+                </button>
+                <button 
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Add Product
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -101,7 +116,7 @@ const ProductTable = () => {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search products by code or name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -126,6 +141,7 @@ const ProductTable = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
@@ -139,13 +155,18 @@ const ProductTable = () => {
               {filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="font-mono text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded border border-gray-200">
+                      {product.code || '-'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-900">{product.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-900">
                     {product.category}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-900">
-                    ${product.price?.toFixed(2)}
+                    birr {product.price?.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs rounded-full ${
@@ -202,6 +223,12 @@ const ProductTable = () => {
             onClose={() => setIsEditModalOpen(false)}
             onProductUpdated={fetchProducts}
             product={selectedProduct}
+          />
+
+          <ImportProductsModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            onProductsImported={fetchProducts}
           />
         </>
       )}
