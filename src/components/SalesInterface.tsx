@@ -9,7 +9,7 @@ import { getTaxSettings, TaxSettings } from '../lib/taxSettings';
 
 interface Product {
   id: string;
-  code?: string;
+  code: string;
   name: string;
   price: number;
   purchasePrice?: number;

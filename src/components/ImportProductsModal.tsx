@@ -110,12 +110,13 @@ const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ isOpen, onClo
           const supplierName = (row["Supplier Name"] || row["Supplier"] || row["supplierName"] || "").toString().trim();
           const invoiceNumber = (row["Invoice Number"] || row["Invoice #"] || row["invoiceNumber"] || "").toString().trim();
 
-          const autoCode = codeRaw || `PRD-${(Date.now() + idx).toString().slice(-6)}`;
-          
           let isValid = true;
           let error = "";
 
-          if (!nameRaw) {
+          if (!codeRaw) {
+            isValid = false;
+            error = "Missing Product Code / SKU";
+          } else if (!nameRaw) {
             isValid = false;
             error = "Missing Product Name";
           } else if (!categoryRaw) {
@@ -130,7 +131,7 @@ const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ isOpen, onClo
           }
 
           return {
-            code: autoCode,
+            code: codeRaw,
             name: nameRaw,
             category: categoryRaw,
             purchasePrice: isNaN(pPriceRaw) ? 0 : pPriceRaw,

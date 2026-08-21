@@ -278,17 +278,17 @@ const SellerDailySales = () => {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
+              <div>
+                <Table containerClassName="max-h-[400px] overflow-auto border rounded-md">
+                  <TableHeader className="sticky top-0 bg-white z-10 shadow-sm">
                     <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Unit Price</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Customer</TableHead>
+                      <TableHead className="bg-white">Time</TableHead>
+                      <TableHead className="bg-white">Product</TableHead>
+                      <TableHead className="bg-white">Category</TableHead>
+                      <TableHead className="bg-white">Qty</TableHead>
+                      <TableHead className="bg-white">Unit Price</TableHead>
+                      <TableHead className="bg-white">Total</TableHead>
+                      <TableHead className="bg-white">Customer</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

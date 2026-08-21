@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Sun, Moon, Receipt, Percent } from 'lucide-react';
 import { getTaxSettings, saveTaxSettings, TaxSettings } from '../lib/taxSettings';
+import CategoryManager from '../components/CategoryManager';
 import { useToast } from '@/hooks/use-toast';
 
 const Settings = () => {
@@ -202,6 +203,9 @@ const Settings = () => {
           </div>
         </form>
       </div>
+
+      {/* Category Management Section */}
+      <CategoryManager />
     </div>
   );
 };

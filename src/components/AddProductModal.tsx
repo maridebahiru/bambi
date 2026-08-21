@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
-import { X, Truck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Truck, Plus } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useToast } from "@/hooks/use-toast";
+import { getCategories, addCategory } from '../lib/categoryService';
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -22,26 +23,65 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
     supplierName: '',
     invoiceNumber: ''
   });
+  const [categories, setCategories] = useState<string[]>([]);
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const categories = [
-    'Mobiles',
-    'Smart Phones',
-    'Non-Smart Phones',
-    'Laptops',
-    'Computers & Desktops',
-    'Mobile Accessories',
-    'Glasses',
-    'Covers',
-    'Chargers',
-    'Electrical Tools'
-  ];
+  useEffect(() => {
+    if (isOpen) {
+      fetchCategories();
+    }
+  }, [isOpen]);
+
+  const fetchCategories = async () => {
+    const cats = await getCategories();
+    setCategories(cats);
+  };
+
+  const handleCreateInlineCategory = async () => {
+    if (!customCategoryInput.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Category name cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const addedCat = await addCategory(customCategoryInput.trim());
+      await fetchCategories();
+      setFormData(prev => ({ ...prev, category: addedCat }));
+      setCustomCategoryInput('');
+      setIsAddingNewCategory(false);
+      toast({
+        title: "Success",
+        description: `Category "${addedCat}" added and selected!`
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to add category",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form data
+    if (!formData.code.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Product Code / SKU is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!formData.name.trim()) {
       toast({
         title: "Validation Error",
@@ -175,7 +215,7 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Product Code / SKU <span className="text-gray-400 font-normal">(Optional, auto-generated if blank)</span>
+              Product Code / SKU *
             </label>
             <input
               type="text"
@@ -183,6 +223,7 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
               onChange={(e) => setFormData({ ...formData, code: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
               placeholder="e.g. PRD-1001 or scan barcode"
+              required
             />
           </div>
 
@@ -201,22 +242,52 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category *
-            </label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            >
-              <option value="">Select Category</option>
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Category *
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsAddingNewCategory(!isAddingNewCategory)}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center"
+              >
+                <Plus size={12} className="mr-0.5" />
+                {isAddingNewCategory ? 'Cancel' : 'New Category'}
+              </button>
+            </div>
+
+            {isAddingNewCategory ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customCategoryInput}
+                  onChange={(e) => setCustomCategoryInput(e.target.value)}
+                  placeholder="Enter new category name..."
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateInlineCategory}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+                >
+                  Add
+                </button>
+              </div>
+            ) : (
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

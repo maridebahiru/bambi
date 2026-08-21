@@ -31,6 +31,17 @@ const queryClient = new QueryClient({
 
 const AppContent: React.FC = () => {
   const { user, userProfile, loading } = useAuth();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
+    return localStorage.getItem('sidebarCollapsed') === 'true';
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('sidebarCollapsed', next.toString());
+      return next;
+    });
+  };
 
   if (loading) {
     return (
@@ -50,22 +61,48 @@ const AppContent: React.FC = () => {
   return (
     <BrowserRouter>
       <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar userRole={userProfile.role} />
-        <main className="flex-1 p-4 sm:p-6 lg:ml-64">
+        <Sidebar
+          userRole={userProfile.role}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
+        />
+        <main
+          className={`flex-1 p-4 sm:p-6 transition-all duration-300 ${
+            isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
+          }`}
+        >
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/products" element={<Products />} />
+            <Route 
+              path="/" 
+              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Home />} 
+            />
+            <Route 
+              path="/dashboard" 
+              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Dashboard />} 
+            />
+            <Route 
+              path="/products" 
+              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Products />} 
+            />
             <Route path="/sales" element={<Sales />} />
             <Route 
               path="/accounting" 
-              element={userProfile.role === 'admin' ? <Accounting /> : <Navigate to="/" replace />} 
+              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Accounting />} 
             />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/receipts" element={<div className="text-center py-12"><h1 className="text-2xl font-bold dark:text-white">Receipts</h1><p className="text-gray-600 dark:text-gray-300 mt-2">Coming soon...</p></div>} />
-            <Route path="*" element={<NotFound />} />
+            <Route 
+              path="/reports" 
+              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Reports />} 
+            />
+            <Route 
+              path="/users" 
+              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Users />} 
+            />
+            <Route 
+              path="/settings" 
+              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Settings />} 
+            />
+            <Route path="/receipts" element={<div className="text-center py-12"><h1 className="text-2xl font-bold dark:text-white">Receipts</h1><p className="text-gray-600 dark:text-gray-300 mt-2">Sales receipt management system.</p></div>} />
+            <Route path="*" element={<Navigate to={userProfile.role === 'seller' ? "/sales" : "/"} replace />} />
           </Routes>
         </main>
       </div>

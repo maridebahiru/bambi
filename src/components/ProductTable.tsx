@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2, FileSpreadsheet } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, FileSpreadsheet, Tag, X } from 'lucide-react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useToast } from "@/hooks/use-toast";
 import AddProductModal from './AddProductModal';
 import EditProductModal from './EditProductModal';
 import ImportProductsModal from './ImportProductsModal';
+import CategoryManager from './CategoryManager';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Product {
   id: string;
-  code?: string;
+  code: string;
   name: string;
   category: string;
   purchasePrice: number;
@@ -25,6 +26,7 @@ const ProductTable = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -90,24 +92,29 @@ const ProductTable = () => {
               <h3 className="text-lg font-semibold text-gray-900">Products</h3>
             </div>
             
-            {userProfile?.role === 'admin' && (
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center shadow-sm"
-                >
-                  <FileSpreadsheet size={16} className="mr-2" />
-                  Import Excel
-                </button>
-                <button 
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm"
-                >
-                  <Plus size={16} className="mr-2" />
-                  Add Product
-                </button>
-              </div>
-            )}
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center shadow-sm text-sm font-medium"
+              >
+                <Tag size={16} className="mr-2" />
+                Categories
+              </button>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center shadow-sm text-sm font-medium"
+              >
+                <FileSpreadsheet size={16} className="mr-2" />
+                Import Excel
+              </button>
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-sm text-sm font-medium"
+              >
+                <Plus size={16} className="mr-2" />
+                Add Product
+              </button>
+            </div>
           </div>
         </div>
 
@@ -146,9 +153,7 @@ const ProductTable = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                {userProfile?.role === 'admin' && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                )}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -156,7 +161,7 @@ const ProductTable = () => {
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-mono text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded border border-gray-200">
-                      {product.code || '-'}
+                      {product.code || 'N/A'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -179,24 +184,24 @@ const ProductTable = () => {
                       {product.stock} units
                     </span>
                   </td>
-                  {userProfile?.role === 'admin' && (
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleEditProduct(product)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteProduct(product.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  )}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => handleEditProduct(product)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Edit product"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteProduct(product.id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete product"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -230,6 +235,23 @@ const ProductTable = () => {
             onClose={() => setIsImportModalOpen(false)}
             onProductsImported={fetchProducts}
           />
+
+          {isCategoryModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto relative p-2">
+                <button
+                  onClick={() => {
+                    setIsCategoryModalOpen(false);
+                    fetchProducts();
+                  }}
+                  className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 z-10"
+                >
+                  <X size={24} />
+                </button>
+                <CategoryManager onCategoriesChanged={fetchProducts} />
+              </div>
+            </div>
+          )}
         </>
       )}
     </>

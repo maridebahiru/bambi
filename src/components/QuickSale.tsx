@@ -5,10 +5,11 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import { generateSaleReceipt } from './PDFGenerator';
+import { getCategories } from '../lib/categoryService';
 
 interface Product {
   id: string;
-  code?: string;
+  code: string;
   name: string;
   price: number;
   stock: number;
@@ -32,16 +33,12 @@ const QuickSale = () => {
   const { userProfile } = useAuth();
   const { toast } = useToast();
 
-  const categories = [
-    'Mobiles', 'Smart Phones', 'Non-Smart Phones', 'Laptops',
-    'Computers & Desktops', 'Mobile Accessories', 'Glasses',
-    'Covers', 'Chargers', 'Electrical Tools'
-  ];
-
+  const [categories, setCategories] = useState<string[]>([]);
   const paymentMethods = ['Cash', 'Loan / Credit', 'CBE Mobile Banking', 'Telebirr', 'Amhara Bank', 'Awash Bank', 'Wegagen Bank', 'Oromia Bank', 'Abisiniya Bank', 'Other'];
 
   useEffect(() => {
     fetchProducts();
+    getCategories().then(setCategories);
   }, []);
 
   useEffect(() => {
