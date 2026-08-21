@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
 import Home from "./pages/Home";
@@ -115,11 +116,13 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <CurrencyProvider>
-            <AppContent />
-            <Toaster />
-            <Sonner />
-          </CurrencyProvider>
+          <LanguageProvider>
+            <CurrencyProvider>
+              <AppContent />
+              <Toaster />
+              <Sonner />
+            </CurrencyProvider>
+          </LanguageProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Sun, Moon, Receipt, Percent } from 'lucide-react';
+import { Settings as SettingsIcon, Sun, Moon, Receipt, Percent, Globe } from 'lucide-react';
 import { getTaxSettings, saveTaxSettings, TaxSettings } from '../lib/taxSettings';
 import CategoryManager from '../components/CategoryManager';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Settings = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [currency, setCurrency] = useState('Br');
+  const { language, setLanguage, t } = useLanguage();
   const [taxSettings, setTaxSettings] = useState<TaxSettings>({
     vatEnabled: true,
     vatRate: 15,
@@ -85,7 +87,7 @@ const Settings = () => {
 
         <div className="p-6 space-y-6">
           {/* Dark Mode Toggle */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pb-4 border-b dark:border-gray-700">
             <div className="flex items-center">
               {darkMode ? (
                 <Moon className="text-blue-600 mr-3" size={20} />
@@ -111,6 +113,43 @@ const Settings = () => {
                 }`}
               />
             </button>
+          </div>
+
+          {/* Language Selection */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Globe className="text-indigo-600 mr-3" size={20} />
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white">{t('language')} (System Language)</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Select application interface language (English / አማርኛ)
+                </p>
+              </div>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  language === 'en'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('am')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  language === 'am'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
+                }`}
+              >
+                አማርኛ (Amharic)
+              </button>
+            </div>
           </div>
         </div>
       </div>
