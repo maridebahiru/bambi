@@ -13,7 +13,7 @@ interface UserData {
   uid: string;
   email: string;
   name: string;
-  role: 'admin' | 'seller';
+  role: 'admin' | 'seller' | 'temporary';
   createdAt: any;
 }
 
@@ -157,9 +157,11 @@ const UserManagement = () => {
                     {user.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${
                       user.role === 'admin' 
                         ? 'bg-purple-100 text-purple-800' 
+                        : user.role === 'temporary'
+                        ? 'bg-amber-100 text-amber-800'
                         : 'bg-green-100 text-green-800'
                     }`}>
                       {user.role}

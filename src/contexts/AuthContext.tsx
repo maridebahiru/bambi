@@ -3,11 +3,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { logActivity } from '../lib/activityLogger';
 
-interface UserProfile {
+export interface UserProfile {
   uid: string;
   email: string;
-  role: 'admin' | 'seller';
+  role: 'admin' | 'seller' | 'temporary';
   name: string;
 }
 
@@ -16,7 +17,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  demoLogin: (role?: 'admin' | 'seller') => void;
+  demoLogin: (role?: 'admin' | 'seller' | 'temporary') => void;
   logout: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
 }
@@ -32,9 +33,37 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfileState] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('shop_user_profile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return null;
+  });
+
+  const [user, setUser] = useState<User | null>(() => {
+    if (userProfile?.uid === 'demo-user-id') {
+      return {
+        uid: 'demo-user-id',
+        email: userProfile.email,
+        displayName: userProfile.name,
+      } as unknown as User;
+    }
+    return auth.currentUser;
+  });
+
   const [loading, setLoading] = useState(true);
+
+  const setUserProfile = (profile: UserProfile | null) => {
+    setUserProfileState(profile);
+    if (profile) {
+      localStorage.setItem('shop_user_profile', JSON.stringify(profile));
+    } else {
+      localStorage.removeItem('shop_user_profile');
+    }
+  };
 
   const createFallbackProfile = (u: User): UserProfile => {
     const fallbackName = u.displayName || u.email?.split('@')[0] || 'User';
@@ -57,7 +86,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error fetching user profile from Firestore:', error);
     }
-    // Fallback profile if Firestore document does not exist or fetch fails
     const activeUser = currentUser || auth.currentUser;
     if (activeUser) {
       const fallback = createFallbackProfile(activeUser);
@@ -75,18 +103,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      console.log('Auth state changed:', u);
-      setUser(u);
-      
       if (u) {
+        setUser(u);
         await fetchUserProfile(u.uid, u);
       } else {
-        // Only clear profile if not in demo mode
-        if (user?.uid !== 'demo-user-id') {
-          setUserProfile(null);
+        // If logged in via Demo Mode or saved profile exists, preserve profile!
+        const savedProfile = localStorage.getItem('shop_user_profile');
+        if (savedProfile) {
+          try {
+            const parsed = JSON.parse(savedProfile);
+            if (parsed?.uid) {
+              setUserProfileState(parsed);
+              if (parsed.uid === 'demo-user-id' && !user) {
+                setUser({
+                  uid: 'demo-user-id',
+                  email: parsed.email,
+                  displayName: parsed.name,
+                } as unknown as User);
+              }
+            }
+          } catch (e) {}
         }
       }
-      
       setLoading(false);
     });
 
@@ -96,36 +134,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Login successful:', result.user.email);
-      await fetchUserProfile(result.user.uid, result.user);
+      const profile = await fetchUserProfile(result.user.uid, result.user);
+      logActivity('LOGIN', `User logged in: ${profile?.name || result.user.email} (${profile?.role || 'user'})`, {
+        uid: result.user.uid,
+        name: profile?.name || result.user.email || 'User'
+      });
     } catch (error: any) {
       console.error('Login error:', error);
       throw error;
     }
   };
 
-  const demoLogin = (role: 'admin' | 'seller' = 'admin') => {
+  const demoLogin = (role: 'admin' | 'seller' | 'temporary' = 'admin') => {
+    let email = 'admin@demo.com';
+    let name = 'Demo Admin';
+
+    if (role === 'seller') {
+      email = 'seller@demo.com';
+      name = 'Demo Seller';
+    } else if (role === 'temporary') {
+      email = 'temp@demo.com';
+      name = 'Temporary Staff';
+    }
+
     const demoUser = {
       uid: 'demo-user-id',
-      email: role === 'admin' ? 'admin@demo.com' : 'seller@demo.com',
-      displayName: role === 'admin' ? 'Demo Admin' : 'Demo Seller',
+      email: email,
+      displayName: name,
       emailVerified: true,
       isAnonymous: false,
     } as unknown as User;
 
     const demoProfile: UserProfile = {
       uid: 'demo-user-id',
-      email: role === 'admin' ? 'admin@demo.com' : 'seller@demo.com',
+      email: email,
       role: role,
-      name: role === 'admin' ? 'Demo Admin' : 'Demo Seller',
+      name: name,
     };
 
     setUser(demoUser);
     setUserProfile(demoProfile);
     setLoading(false);
+
+    logActivity('LOGIN', `Demo user signed in as ${demoProfile.name} (${role})`, {
+      uid: demoProfile.uid,
+      name: demoProfile.name
+    });
   };
 
   const logout = async () => {
+    if (userProfile) {
+      logActivity('LOGOUT', `User signed out: ${userProfile.name} (${userProfile.role})`, {
+        uid: userProfile.uid,
+        name: userProfile.name
+      });
+    }
     try {
       await signOut(auth);
     } catch (e) {

@@ -16,6 +16,8 @@ interface SaleDoc {
   sellerId?: string;
   sellerName?: string;
   date: string;
+  timestamp?: any;
+  sentToCashRegister?: boolean;
 }
 
 interface ReceivableDoc {
@@ -31,6 +33,7 @@ interface ExpenseDoc {
   category?: string;
   amount: number;
   date: string;
+  timestamp?: any;
 }
 
 interface PnLReportProps {
@@ -41,9 +44,18 @@ const PnLReport: React.FC<PnLReportProps> = ({ incomeTaxRate = 35 }) => {
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(1); // 1st of current month
-    return d.toISOString().split('T')[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
   const [sales, setSales] = useState<SaleDoc[]>([]);
   const [expenses, setExpenses] = useState<ExpenseDoc[]>([]);
@@ -78,8 +90,66 @@ const PnLReport: React.FC<PnLReportProps> = ({ incomeTaxRate = 35 }) => {
     }
   };
 
-  const filteredSales = sales.filter(s => s.date >= startDate && s.date <= endDate);
-  const filteredExpenses = expenses.filter(e => e.date >= startDate && e.date <= endDate);
+  const setPresetRange = (preset: 'today' | 'week' | 'month' | 'ytd' | 'all') => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    setEndDate(todayStr);
+
+    if (preset === 'today') {
+      setStartDate(todayStr);
+    } else if (preset === 'week') {
+      const start = new Date();
+      start.setDate(now.getDate() - 7);
+      const sY = start.getFullYear();
+      const sM = String(start.getMonth() + 1).padStart(2, '0');
+      const sD = String(start.getDate()).padStart(2, '0');
+      setStartDate(`${sY}-${sM}-${sD}`);
+    } else if (preset === 'month') {
+      setStartDate(`${year}-${month}-01`);
+    } else if (preset === 'ytd') {
+      setStartDate(`${year}-01-01`);
+    } else if (preset === 'all') {
+      setStartDate('');
+      setEndDate('');
+    }
+  };
+
+  const getItemLocalDateString = (item: { timestamp?: any; date?: string }) => {
+    let dateObj: Date | null = null;
+    if (item.timestamp?.toDate) {
+      dateObj = item.timestamp.toDate();
+    } else if (item.timestamp?.seconds) {
+      dateObj = new Date(item.timestamp.seconds * 1000);
+    } else if (item.date) {
+      const str = String(item.date).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str;
+      }
+      dateObj = new Date(str);
+    }
+
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const isItemInDateRange = (item: { timestamp?: any; date?: string }) => {
+    const d = getItemLocalDateString(item);
+    if (startDate && d < startDate) return false;
+    if (endDate && d > endDate) return false;
+    return true;
+  };
+
+  const filteredSales = sales.filter(s => isItemInDateRange(s));
+  const filteredExpenses = expenses.filter(e => isItemInDateRange(e));
 
   // Unpaid Customer Receivables
   const totalUncollectedReceivables = receivables
@@ -101,6 +171,7 @@ const PnLReport: React.FC<PnLReportProps> = ({ incomeTaxRate = 35 }) => {
     totalExpenses += e.amount;
   });
 
+  // Income Tax (35% Ethiopian Tax) - Calculated on Net Taxable Profit of the statement period
   const netProfitBeforeTax = grossProfit - totalExpenses;
   const accruedIncomeTax = netProfitBeforeTax > 0 ? netProfitBeforeTax * (incomeTaxRate / 100) : 0;
   const netProfitAfterTax = netProfitBeforeTax - accruedIncomeTax;
@@ -116,8 +187,6 @@ const PnLReport: React.FC<PnLReportProps> = ({ incomeTaxRate = 35 }) => {
     sellerAttributionMap[name].salesCount += 1;
     sellerAttributionMap[name].revenue += rev;
   });
-
-  const sellerAttribution = Object.values(sellerAttributionMap);
 
   const exportPnLPdf = () => {
     const doc = new jsPDF();
@@ -165,32 +234,32 @@ const PnLReport: React.FC<PnLReportProps> = ({ incomeTaxRate = 35 }) => {
     doc.setFontSize(10);
 
     if (Object.keys(expenseCatMap).length > 0) {
-      Object.entries(expenseCatMap).forEach(([cat, amt]) => {
-        doc.text(`- ${cat} Expenses`, 25, y);
-        doc.text(`Br ${amt.toFixed(2)}`, 185, y, { align: 'right' });
-        y += 8;
+      Object.entries(expenseCatMap).forEach(([cat, amount]) => {
+        doc.text(`Expense: ${cat}`, 25, y);
+        doc.text(`Br ${amount.toFixed(2)}`, 185, y, { align: 'right' });
+        y += 7;
       });
     } else {
-      doc.text('- No Operating Expenses recorded in period', 25, y);
-      y += 8;
+      doc.text('No Operating Expenses Logged in Period', 25, y);
+      y += 7;
     }
 
     doc.setFont('helvetica', 'bold');
     doc.text('TOTAL OPERATING EXPENSES', 25, y);
     doc.text(`(Br ${totalExpenses.toFixed(2)})`, 185, y, { align: 'right' });
-    y += 14;
+    y += 12;
 
-    // Section 3: Net Profit & Tax
+    // Section 3: Profitability & Tax
     doc.setFontSize(12);
-    doc.text('3. NET PROFIT & TAXATION (ETHIOPIAN LAW)', 20, y);
+    doc.text('3. NET PROFIT & TAX SUMMARY', 20, y);
     y += 10;
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-
-    doc.text('Net Profit Before Tax', 25, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text('NET OPERATING PROFIT (BEFORE TAX)', 25, y);
     doc.text(`Br ${netProfitBeforeTax.toFixed(2)}`, 185, y, { align: 'right' });
     y += 8;
 
+    doc.setFont('helvetica', 'normal');
     doc.text(`Less: Accrued Corporate Income Tax (${incomeTaxRate}%)`, 25, y);
     doc.text(`(Br ${accruedIncomeTax.toFixed(2)})`, 185, y, { align: 'right' });
     y += 12;
@@ -213,25 +282,35 @@ const PnLReport: React.FC<PnLReportProps> = ({ incomeTaxRate = 35 }) => {
   return (
     <div className="space-y-6">
       {/* Date Filter & Export Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border dark:border-gray-700">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+          <div className="flex items-center space-x-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
             <Calendar size={18} className="text-indigo-600" />
-            <span>P&L Statement Date Range:</span>
+            <span>P&L Date Filter:</span>
           </div>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
-          />
-          <span className="text-gray-400">to</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
-          />
+          <div className="flex items-center space-x-2 text-xs">
+            <span className="text-gray-500 font-medium">From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-medium dark:bg-gray-700 dark:text-white"
+            />
+            <span className="text-gray-500 font-medium">To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-medium dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div className="flex items-center space-x-1 border-l dark:border-gray-700 pl-2">
+            <button onClick={() => setPresetRange('today')} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-300 rounded text-xs font-semibold">Today</button>
+            <button onClick={() => setPresetRange('month')} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-300 rounded text-xs font-semibold">This Month</button>
+            <button onClick={() => setPresetRange('ytd')} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-300 rounded text-xs font-semibold">This Year</button>
+            <button onClick={() => setPresetRange('all')} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-300 rounded text-xs font-semibold">All Time</button>
+          </div>
         </div>
 
         <button
@@ -243,27 +322,26 @@ const PnLReport: React.FC<PnLReportProps> = ({ incomeTaxRate = 35 }) => {
         </button>
       </div>
 
-      {/* P&L Statement Render */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6 space-y-6">
-        <div className="text-center border-b dark:border-gray-700 pb-4">
-          <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">PROFIT & LOSS STATEMENT</h2>
-          <p className="text-xs text-gray-500 mt-1">Period: {startDate} to {endDate}</p>
+      {/* Primary Financial Overview Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-hidden">
+        <div className="p-4 bg-gray-50 dark:bg-gray-750 font-bold text-gray-900 dark:text-white border-b dark:border-gray-700">
+          PROFIT & LOSS STATEMENT ({startDate || 'Beginning'} to {endDate || 'Today'})
         </div>
 
-        <div className="space-y-4 text-sm">
+        <div className="p-6 space-y-6">
           {/* Section 1: Revenue & COGS */}
           <div>
-            <h4 className="font-bold text-indigo-600 dark:text-indigo-400 border-b dark:border-gray-700 pb-1">1. REVENUE & COST OF GOODS SOLD</h4>
-            <div className="py-2 space-y-2">
-              <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                <span>Gross Operating Revenue</span>
+            <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-3">1. Operating Revenue & Cost of Sales</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400">Gross Operating Revenue (Total Sales)</span>
                 <span className="font-semibold text-gray-900 dark:text-white">Br {grossRevenue.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                <span>Less: Cost of Goods Sold (COGS)</span>
+              <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400">Less: Cost of Goods Sold (COGS)</span>
                 <span className="font-semibold text-orange-600 dark:text-orange-400">- Br {totalCogs.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-2 border-t dark:border-gray-700">
+              <div className="flex justify-between py-2 bg-gray-50 dark:bg-gray-750 px-3 rounded font-bold text-gray-900 dark:text-white">
                 <span>GROSS OPERATING PROFIT</span>
                 <span className="text-emerald-600 dark:text-emerald-400">Br {grossProfit.toFixed(2)}</span>
               </div>
@@ -272,73 +350,42 @@ const PnLReport: React.FC<PnLReportProps> = ({ incomeTaxRate = 35 }) => {
 
           {/* Section 2: Operating Expenses */}
           <div>
-            <h4 className="font-bold text-indigo-600 dark:text-indigo-400 border-b dark:border-gray-700 pb-1">2. OPERATING EXPENSES</h4>
-            <div className="py-2 space-y-2">
-              {Object.keys(expenseCatMap).length > 0 ? (
-                Object.entries(expenseCatMap).map(([cat, amt]) => (
-                  <div key={cat} className="flex justify-between text-gray-700 dark:text-gray-300">
-                    <span>{cat} Expenses</span>
-                    <span className="text-red-600 dark:text-red-400">- Br {amt.toFixed(2)}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-xs text-gray-400 italic">No operating expenses recorded for this period.</div>
-              )}
-              <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-2 border-t dark:border-gray-700">
-                <span>TOTAL OPERATING EXPENSES</span>
-                <span className="text-red-600 dark:text-red-400">- Br {totalExpenses.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Tax & Bottom Line */}
-          <div>
-            <h4 className="font-bold text-indigo-600 dark:text-indigo-400 border-b dark:border-gray-700 pb-1">3. NET PROFIT & TAXATION (ETHIOPIAN LAW)</h4>
-            <div className="py-2 space-y-2">
-              <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                <span>Net Profit Before Tax</span>
-                <span className="font-semibold text-gray-900 dark:text-white">Br {netProfitBeforeTax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-amber-700 dark:text-amber-400">
-                <span>Less: Accrued Corporate Income Tax ({incomeTaxRate}%)</span>
-                <span className="font-semibold">- Br {accruedIncomeTax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between font-extrabold text-lg text-emerald-700 dark:text-emerald-300 pt-3 border-t-2 dark:border-gray-700">
-                <span>NET PROFIT AFTER TAX</span>
-                <span>Br {netProfitAfterTax.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Cashier Attribution Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6 space-y-4">
-        <div className="flex items-center space-x-2 border-b dark:border-gray-700 pb-3">
-          <UserCheck className="text-blue-600" size={20} />
-          <h3 className="text-base font-bold text-gray-900 dark:text-white">Cashier / Staff Sales Attribution</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-750 text-xs font-semibold text-gray-500 uppercase">
-              <tr>
-                <th className="px-6 py-3 text-left">Staff Name</th>
-                <th className="px-6 py-3 text-center">Transactions Processed</th>
-                <th className="px-6 py-3 text-right">Total Revenue Generated</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {sellerAttribution.map(s => (
-                <tr key={s.name} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                  <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{s.name}</td>
-                  <td className="px-6 py-3 text-center text-gray-600 dark:text-gray-300">{s.salesCount}</td>
-                  <td className="px-6 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">
-                    Br {s.revenue.toFixed(2)}
-                  </td>
-                </tr>
+            <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-3">2. Operating Expenses</h4>
+            <div className="space-y-2 text-sm">
+              {Object.entries(expenseCatMap).map(([cat, amount]) => (
+                <div key={cat} className="flex justify-between py-1.5 border-b dark:border-gray-700">
+                  <span className="text-gray-600 dark:text-gray-400">{cat} Expenses</span>
+                  <span className="font-medium text-red-600 dark:text-red-400">Br {amount.toFixed(2)}</span>
+                </div>
               ))}
-            </tbody>
-          </table>
+              {Object.keys(expenseCatMap).length === 0 && (
+                <p className="text-xs text-gray-400 italic">No expenses logged in this period</p>
+              )}
+              <div className="flex justify-between py-2 bg-red-50 dark:bg-red-950 px-3 rounded font-bold text-red-700 dark:text-red-300">
+                <span>TOTAL OPERATING EXPENSES</span>
+                <span>- Br {totalExpenses.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Net Profit & Tax Breakdown */}
+          <div>
+            <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-3">3. Net Profitability & Corporate Tax</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between py-2 border-b dark:border-gray-700 font-bold text-gray-900 dark:text-white">
+                <span>Net Taxable Profit (Before Tax)</span>
+                <span>Br {netProfitBeforeTax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400">Less: Accrued Corporate Income Tax ({incomeTaxRate}%)</span>
+                <span className="font-semibold text-amber-600 dark:text-amber-400">- Br {accruedIncomeTax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-3 bg-emerald-50 dark:bg-emerald-950 px-4 rounded-lg font-extrabold text-base">
+                <span className="text-emerald-900 dark:text-emerald-200">NET PROFIT AFTER TAX (BOTTOM LINE)</span>
+                <span className="text-emerald-700 dark:text-emerald-300">Br {netProfitAfterTax.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

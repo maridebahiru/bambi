@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole, isCollapsed, onToggleCollap
     { icon: ShoppingCart, label: t('sales'), path: '/sales' },
   ];
 
-  const menuItems = userRole === 'seller' ? sellerMenuItems : adminMenuItems;
+  const menuItems = (userRole === 'seller' || userRole === 'temporary') ? sellerMenuItems : adminMenuItems;
 
   const handleLogout = async () => {
     try {

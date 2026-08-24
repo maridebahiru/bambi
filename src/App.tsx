@@ -59,6 +59,8 @@ const AppContent: React.FC = () => {
     return <Login />;
   }
 
+  const isNonAdmin = userProfile.role === 'seller' || userProfile.role === 'temporary';
+
   return (
     <BrowserRouter>
       <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -75,35 +77,38 @@ const AppContent: React.FC = () => {
           <Routes>
             <Route 
               path="/" 
-              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Home />} 
+              element={isNonAdmin ? <Navigate to="/sales" replace /> : <Home />} 
             />
             <Route 
               path="/dashboard" 
-              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Dashboard />} 
+              element={isNonAdmin ? <Navigate to="/sales" replace /> : <Dashboard />} 
             />
             <Route 
               path="/products" 
-              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Products />} 
+              element={isNonAdmin ? <Navigate to="/sales" replace /> : <Products />} 
             />
             <Route path="/sales" element={<Sales />} />
             <Route 
               path="/accounting" 
-              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Accounting />} 
+              element={isNonAdmin ? <Navigate to="/sales" replace /> : <Accounting />} 
             />
             <Route 
               path="/reports" 
-              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Reports />} 
+              element={isNonAdmin ? <Navigate to="/sales" replace /> : <Reports />} 
             />
             <Route 
               path="/users" 
-              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Users />} 
+              element={isNonAdmin ? <Navigate to="/sales" replace /> : <Users />} 
             />
             <Route 
               path="/settings" 
-              element={userProfile.role === 'seller' ? <Navigate to="/sales" replace /> : <Settings />} 
+              element={isNonAdmin ? <Navigate to="/sales" replace /> : <Settings />} 
             />
-            <Route path="/receipts" element={<div className="text-center py-12"><h1 className="text-2xl font-bold dark:text-white">Receipts</h1><p className="text-gray-600 dark:text-gray-300 mt-2">Sales receipt management system.</p></div>} />
-            <Route path="*" element={<Navigate to={userProfile.role === 'seller' ? "/sales" : "/"} replace />} />
+            <Route 
+              path="/receipts" 
+              element={isNonAdmin ? <Navigate to="/sales" replace /> : <div className="text-center py-12"><h1 className="text-2xl font-bold dark:text-white">Receipts</h1><p className="text-gray-600 dark:text-gray-300 mt-2">Sales receipt management system.</p></div>} 
+            />
+            <Route path="*" element={<Navigate to={isNonAdmin ? "/sales" : "/"} replace />} />
           </Routes>
         </main>
       </div>

@@ -16,7 +16,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }: AddUserModalProps) => {
     name: '',
     email: '',
     password: '',
-    role: 'seller' as 'admin' | 'seller'
+    role: 'seller' as 'admin' | 'seller' | 'temporary'
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -157,11 +157,12 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }: AddUserModalProps) => {
             </label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'seller' })}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'seller' | 'temporary' })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="seller">Seller</option>
-              <option value="admin">Admin</option>
+              <option value="seller">Seller (Standard POS)</option>
+              <option value="temporary">Temporary User (Quick Sales POS Only)</option>
+              <option value="admin">Admin (Full Store Access)</option>
             </select>
           </div>
 

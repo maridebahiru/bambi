@@ -21,7 +21,8 @@ const ExpensesManager: React.FC = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
-    category: 'Rent',
+    category: 'Transport',
+    customCategory: '',
     amount: 0,
     date: new Date().toISOString().split('T')[0],
   });
@@ -29,7 +30,7 @@ const ExpensesManager: React.FC = () => {
   const { userProfile } = useAuth();
   const { toast } = useToast();
 
-  const expenseCategories = ['Rent', 'Utilities', 'Salaries', 'Supplies', 'Maintenance', 'Marketing', 'Other'];
+  const expenseCategories = ['Transport', 'Rent', 'Utilities', 'Salaries', 'Supplies', 'Maintenance', 'Marketing', 'Other'];
 
   useEffect(() => {
     fetchExpenses();
@@ -59,10 +60,23 @@ const ExpensesManager: React.FC = () => {
       return;
     }
 
+    if (formData.category === 'Other' && !formData.customCategory.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please specify the custom category name for Other expense.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const finalCategory = (formData.category === 'Other' && formData.customCategory.trim())
+      ? `Other (${formData.customCategory.trim()})`
+      : formData.category;
+
     try {
       await addDoc(collection(db, 'expenses'), {
         description: formData.description.trim(),
-        category: formData.category,
+        category: finalCategory,
         amount: formData.amount,
         date: formData.date,
         createdBy: userProfile?.name || 'Admin',
@@ -72,7 +86,8 @@ const ExpensesManager: React.FC = () => {
       setIsAddOpen(false);
       setFormData({
         description: '',
-        category: 'Rent',
+        category: 'Transport',
+        customCategory: '',
         amount: 0,
         date: new Date().toISOString().split('T')[0],
       });
@@ -192,13 +207,29 @@ const ExpensesManager: React.FC = () => {
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white text-sm"
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white text-sm font-medium"
                 >
                   {expenseCategories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
               </div>
+
+              {formData.category === 'Other' && (
+                <div>
+                  <label className="block text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">
+                    Specify Custom Expense Category / Variety *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.customCategory}
+                    onChange={(e) => setFormData({ ...formData, customCategory: e.target.value })}
+                    placeholder="e.g. Repair, Licensing, Refreshments..."
+                    className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg dark:bg-gray-700 dark:text-white text-sm"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (birr) *</label>
