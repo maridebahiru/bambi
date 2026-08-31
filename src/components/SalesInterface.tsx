@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Receipt, User, Plus, Minus, Trash2, Percent, Edit2, DollarSign, Search, Filter, Package, Zap } from 'lucide-react';
+import { ShoppingCart, Receipt, User, Plus, Minus, Trash2, Percent, Edit2, DollarSign, Search, Filter, Package, Zap, Download } from 'lucide-react';
 import { collection, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +37,7 @@ const SalesInterface = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [isVatExempt, setIsVatExempt] = useState(false);
+  const [lastCompletedReceipt, setLastCompletedReceipt] = useState<any>(null);
 
   // Seller Shift Operating Expense State
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -307,7 +308,7 @@ const SalesInterface = () => {
         buyerName: buyerName || 'Walk-in Customer'
       });
 
-      generateSaleReceipt({
+      const receiptData = {
         items: cart.map(item => ({
           productName: item.product.name,
           quantity: item.quantity,
@@ -315,12 +316,16 @@ const SalesInterface = () => {
           totalPrice: getItemUnitPrice(item) * item.quantity
         })),
         buyerName: buyerName || 'Walk-in Customer',
+        sellerName: userProfile?.name,
         timestamp: saleTimestamp,
         subtotal: cartSubtotal,
         vatRate: activeVatRate,
         vatAmount: cartVatAmount,
-        totalAmount: cartGrandTotal
-      }, userProfile);
+        totalAmount: cartGrandTotal,
+        paymentMethod
+      };
+
+      setLastCompletedReceipt(receiptData);
 
       setCart([]);
       setBuyerName('');
@@ -331,10 +336,8 @@ const SalesInterface = () => {
       await fetchProductsAndTax();
 
       toast({
-        title: "Success",
-        description: paymentMethod === 'Loan / Credit'
-          ? "Credit sale processed & receivable recorded!"
-          : "Sale processed successfully and receipt generated!"
+        title: "Sale Completed",
+        description: "Sale processed successfully. Click 'Download Receipt' anytime to save the receipt PDF."
       });
     } catch (error) {
       console.error('Error processing sale:', error);
@@ -425,6 +428,39 @@ const SalesInterface = () => {
           <span>Log Operating Expense</span>
         </button>
       </div>
+
+      {/* Completed Sale Receipt Banner */}
+      {lastCompletedReceipt && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 p-4 rounded-xl mb-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center space-x-3">
+            <div className="bg-emerald-600 text-white p-2 rounded-full flex-shrink-0">
+              <Receipt size={20} />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Sale Completed!</h4>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                Customer: {lastCompletedReceipt.buyerName} | Total: Br {lastCompletedReceipt.totalAmount?.toFixed(2)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => generateSaleReceipt(lastCompletedReceipt, userProfile)}
+              className="flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition-colors"
+            >
+              <Download size={15} className="mr-1.5" />
+              Download Receipt
+            </button>
+            <button
+              onClick={() => setLastCompletedReceipt(null)}
+              className="text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-200 text-xs px-2 py-1.5 font-bold"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Easy Product Search Section */}

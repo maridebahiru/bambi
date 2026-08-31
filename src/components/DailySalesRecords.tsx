@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, Paperclip, User, CreditCard, Calendar, Filter, RotateCcw } from 'lucide-react';
+import { Printer, Paperclip, User, CreditCard, Calendar, Filter, RotateCcw, Download } from 'lucide-react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useAuth } from '../contexts/AuthContext';
+import { generateSaleReceipt } from './PDFGenerator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,6 +29,7 @@ const DailySalesRecords = () => {
   const [dateFilter, setDateFilter] = useState<'today' | 'all'>('today');
   const { formatCurrency } = useCurrency();
   const { toast } = useToast();
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     fetchSalesRecords();
@@ -292,6 +295,7 @@ const DailySalesRecords = () => {
               <TableHead className="bg-white dark:bg-gray-800">Customer</TableHead>
               <TableHead className="bg-white dark:bg-gray-800">Seller</TableHead>
               <TableHead className="bg-white dark:bg-gray-800">Payment Method</TableHead>
+              <TableHead className="bg-white dark:bg-gray-800 text-right">Receipt</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -314,11 +318,30 @@ const DailySalesRecords = () => {
                       {record.paymentMethod || 'N/A'}
                     </span>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <button
+                      onClick={() => generateSaleReceipt({
+                        productName: record.productName,
+                        quantity: record.quantity,
+                        unitPrice: record.unitPrice,
+                        totalPrice: record.totalPrice,
+                        buyerName: record.buyerName || 'Walk-in Customer',
+                        sellerName: record.sellerName,
+                        timestamp: record.timestamp,
+                        paymentMethod: record.paymentMethod
+                      }, userProfile)}
+                      className="inline-flex items-center px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-700 rounded text-xs font-medium transition-colors"
+                      title="Download Receipt PDF"
+                    >
+                      <Download size={12} className="mr-1" />
+                      PDF
+                    </button>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                   No sales records found matching the active filters
                 </TableCell>
               </TableRow>

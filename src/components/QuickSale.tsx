@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShoppingCart, Package, Filter, Plus, Minus, Trash2, Percent, Receipt, DollarSign, CheckSquare } from 'lucide-react';
+import { Search, ShoppingCart, Package, Filter, Plus, Minus, Trash2, Percent, Receipt, DollarSign, CheckSquare, Download } from 'lucide-react';
 import { collection, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,6 +45,7 @@ const QuickSale = () => {
   });
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastCompletedReceipt, setLastCompletedReceipt] = useState<any>(null);
 
   // Seller Expense Modal State
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -298,7 +299,7 @@ const QuickSale = () => {
         buyerName: buyerName || 'Walk-in Customer'
       });
 
-      generateSaleReceipt({
+      const receiptData = {
         items: cart.map(item => {
           const finalPrice = getItemUnitPrice(item);
           const itemSubtotal = finalPrice * item.quantity;
@@ -311,13 +312,16 @@ const QuickSale = () => {
           };
         }),
         buyerName: buyerName || 'Walk-in Customer',
+        sellerName: userProfile?.name,
         timestamp: saleTimestamp,
         subtotal: cartSubtotal,
         vatRate: activeVatRate,
         vatAmount: cartVatAmount,
         totalAmount: cartGrandTotal,
         paymentMethod
-      }, userProfile);
+      };
+
+      setLastCompletedReceipt(receiptData);
 
       setCart([]);
       setBuyerName('');
@@ -327,8 +331,8 @@ const QuickSale = () => {
       fetchProductsAndSettings();
 
       toast({
-        title: "Success",
-        description: "Sale processed and receipt generated!"
+        title: "Sale Completed",
+        description: "Sale processed successfully. Click 'Download Receipt' anytime to save the receipt PDF."
       });
 
     } catch (error) {
@@ -402,6 +406,38 @@ const QuickSale = () => {
 
   return (
     <div className="space-y-6">
+      {/* Completed Sale Receipt Banner */}
+      {lastCompletedReceipt && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 p-4 rounded-xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center space-x-3">
+            <div className="bg-emerald-600 text-white p-2 rounded-full flex-shrink-0">
+              <Receipt size={20} />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Sale Completed!</h4>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                Customer: {lastCompletedReceipt.buyerName} | Total: Br {lastCompletedReceipt.totalAmount?.toFixed(2)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => generateSaleReceipt(lastCompletedReceipt, userProfile)}
+              className="flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition-colors"
+            >
+              <Download size={15} className="mr-1.5" />
+              Download Receipt
+            </button>
+            <button
+              onClick={() => setLastCompletedReceipt(null)}
+              className="text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-200 text-xs px-2 py-1.5 font-bold"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       {/* Action Header bar for quick expense logging */}
       <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border dark:border-gray-700">
         <div>

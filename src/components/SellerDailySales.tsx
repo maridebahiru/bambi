@@ -3,6 +3,8 @@ import { Printer, Download, User } from 'lucide-react';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useAuth } from '../contexts/AuthContext';
+import { generateSaleReceipt } from './PDFGenerator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,6 +36,7 @@ const SellerDailySales = () => {
   const [selectedSeller, setSelectedSeller] = useState<string>('');
   const { formatCurrency } = useCurrency();
   const { toast } = useToast();
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     fetchSalesRecords();
@@ -289,6 +292,7 @@ const SellerDailySales = () => {
                       <TableHead className="bg-white">Unit Price</TableHead>
                       <TableHead className="bg-white">Total</TableHead>
                       <TableHead className="bg-white">Customer</TableHead>
+                      <TableHead className="bg-white text-right">Receipt</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -303,6 +307,24 @@ const SellerDailySales = () => {
                         <TableCell>{formatCurrency(sale.unitPrice)}</TableCell>
                         <TableCell className="font-semibold">{formatCurrency(sale.totalPrice)}</TableCell>
                         <TableCell>{sale.buyerName || 'Walk-in Customer'}</TableCell>
+                        <TableCell className="text-right">
+                          <button
+                            onClick={() => generateSaleReceipt({
+                              productName: sale.productName,
+                              quantity: sale.quantity,
+                              unitPrice: sale.unitPrice,
+                              totalPrice: sale.totalPrice,
+                              buyerName: sale.buyerName || 'Walk-in Customer',
+                              sellerName: sale.sellerName,
+                              timestamp: sale.timestamp
+                            }, userProfile)}
+                            className="inline-flex items-center px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-xs font-medium transition-colors"
+                            title="Download Receipt PDF"
+                          >
+                            <Download size={12} className="mr-1" />
+                            PDF
+                          </button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

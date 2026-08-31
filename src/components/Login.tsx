@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, User, Lock } from 'lucide-react';
@@ -10,7 +9,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
-  const { login, demoLogin } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,33 +92,6 @@ const Login = () => {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        {/* Demo Fast Login Buttons */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center mb-3">
-            Quick Demo Login Options
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => demoLogin('admin')}
-              className="px-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition-colors"
-            >
-              Admin Demo
-            </button>
-            <button
-              onClick={() => demoLogin('seller')}
-              className="px-2 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-colors"
-            >
-              Seller Demo
-            </button>
-            <button
-              onClick={() => demoLogin('temporary')}
-              className="px-2 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold transition-colors"
-            >
-              Temp POS User
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

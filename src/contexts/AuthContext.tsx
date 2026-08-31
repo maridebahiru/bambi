@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { logActivity } from '../lib/activityLogger';
 
@@ -141,6 +141,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (error: any) {
       console.error('Login error:', error);
+      // Auto-provision Super Admin if registering / logging in for the first time
+      const normalizedEmail = email.trim().toLowerCase();
+      if (
+        normalizedEmail === 'maramawitdereje93@gmail.com' &&
+        (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/user-mismatch' || error.code === 'auth/invalid-email')
+      ) {
+        try {
+          console.log('Auto-provisioning super admin user account...');
+          const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+          const newUid = userCredential.user.uid;
+          const adminProfile: UserProfile = {
+            uid: newUid,
+            name: 'Maramawit Dereje',
+            email: email.trim(),
+            role: 'admin'
+          };
+          await setDoc(doc(db, 'users', newUid), {
+            ...adminProfile,
+            createdAt: new Date()
+          });
+          setUser(userCredential.user);
+          setUserProfile(adminProfile);
+          logActivity('LOGIN', `Super Admin account initialized & logged in: Maramawit Dereje (admin)`, {
+            uid: newUid,
+            name: 'Maramawit Dereje'
+          });
+          return;
+        } catch (signupErr: any) {
+          console.error('Auto admin provision error:', signupErr);
+          if (signupErr.code === 'auth/email-already-in-use') {
+            throw new Error('Email exists in Firebase Auth with a different password. Please check your password.');
+          }
+        }
+      }
       throw error;
     }
   };

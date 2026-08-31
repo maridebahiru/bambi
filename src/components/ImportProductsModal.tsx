@@ -46,39 +46,101 @@ const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ isOpen, onClo
 
   if (!isOpen) return null;
 
-  const downloadTemplate = () => {
-    const templateData = [
-      {
-        "Code": "PRD-1001",
-        "Name": "Wireless Charger 15W",
-        "Category": "Chargers",
-        "Purchase Price": 250,
-        "Interest Percent": 30,
-        "Stock": 15,
-        "Supplier Name": "Anker Wholesale",
-        "Invoice Number": "INV-8821"
-      },
-      {
-        "Code": "PRD-1002",
-        "Name": "Silicone Phone Case",
-        "Category": "Covers",
-        "Purchase Price": 120,
-        "Interest Percent": 40,
-        "Stock": 50,
-        "Supplier Name": "Global Accessories",
-        "Invoice Number": "INV-8822"
+  const downloadTemplate = (e?: React.MouseEvent) => {
+    try {
+      // Direct link fallback
+      const link = document.createElement('a');
+      link.href = '/product_import_template.xlsx';
+      link.setAttribute('download', 'product_import_template.xlsx');
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+      }, 300);
+
+      toast({
+        title: "Excel Template Downloaded",
+        description: "product_import_template.xlsx downloaded successfully."
+      });
+    } catch (error) {
+      console.error("Direct template download error, generating dynamically:", error);
+
+      try {
+        const templateData = [
+          {
+            "Code": "PRD-1001",
+            "Name": "Wireless Charger 15W",
+            "Category": "Chargers",
+            "Purchase Price": 250,
+            "Interest Percent": 30,
+            "Stock": 15,
+            "Supplier Name": "Anker Wholesale",
+            "Invoice Number": "INV-8821"
+          },
+          {
+            "Code": "PRD-1002",
+            "Name": "Silicone Phone Case",
+            "Category": "Covers",
+            "Purchase Price": 120,
+            "Interest Percent": 40,
+            "Stock": 50,
+            "Supplier Name": "Global Accessories",
+            "Invoice Number": "INV-8822"
+          }
+        ];
+
+        const worksheet = XLSX.utils.json_to_sheet(templateData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+
+        worksheet['!cols'] = [
+          { wch: 15 },
+          { wch: 30 },
+          { wch: 20 },
+          { wch: 18 },
+          { wch: 18 },
+          { wch: 12 },
+          { wch: 25 },
+          { wch: 18 }
+        ];
+
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.setAttribute('download', 'product_import_template.xlsx');
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          if (document.body.contains(a)) {
+            document.body.removeChild(a);
+          }
+          window.URL.revokeObjectURL(url);
+        }, 200);
+
+        toast({
+          title: "Excel Template Downloaded",
+          description: "product_import_template.xlsx downloaded."
+        });
+      } catch (fallbackErr: any) {
+        console.error("Dynamic XLSX generation error:", fallbackErr);
+        toast({
+          title: "Download Error",
+          description: fallbackErr?.message || "Could not generate Excel file.",
+          variant: "destructive"
+        });
       }
-    ];
-
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
-
-    // Auto-fit column widths
-    const max_widths = [12, 25, 20, 15, 16, 10, 20, 15];
-    worksheet['!cols'] = max_widths.map(w => ({ wch: w }));
-
-    XLSX.writeFile(workbook, "product_import_template.xlsx");
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -250,18 +312,25 @@ const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ isOpen, onClo
         </div>
 
         {/* Upload Controls & Template Download */}
-        <div className="my-4 p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="my-4 p-4 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="space-y-1">
-            <h3 className="font-semibold text-sm text-gray-800">1. Download Sample Excel Template</h3>
-            <p className="text-xs text-gray-500">Get a pre-formatted template with standard headers and sample data.</p>
+            <h3 className="font-semibold text-sm text-emerald-950 dark:text-emerald-200">1. Download Sample Excel Template (.xlsx)</h3>
+            <p className="text-xs text-emerald-700 dark:text-emerald-400">Get an official pre-formatted Excel file with standard headers and sample data.</p>
           </div>
-          <button
-            onClick={downloadTemplate}
-            className="flex items-center space-x-2 px-3 py-2 text-xs font-medium bg-white text-green-700 border border-green-300 rounded-md hover:bg-green-50 shadow-sm transition-colors"
+          <a
+            href="/product_import_template.xlsx"
+            download="product_import_template.xlsx"
+            onClick={() => {
+              toast({
+                title: "Excel Template Downloaded",
+                description: "product_import_template.xlsx saved to downloads."
+              });
+            }}
+            className="flex items-center space-x-2 px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow transition-colors flex-shrink-0 cursor-pointer"
           >
             <Download size={16} />
-            <span>Download Template</span>
-          </button>
+            <span>Download Excel Template (.xlsx)</span>
+          </a>
         </div>
 
         <div className="mb-4">

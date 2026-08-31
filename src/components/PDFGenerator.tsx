@@ -15,7 +15,8 @@ interface SaleData {
   unitPrice?: number;
   totalPrice?: number;
   buyerName: string;
-  timestamp: Date;
+  sellerName?: string;
+  timestamp: any;
   subtotal?: number;
   vatRate?: number;
   vatAmount?: number;
@@ -26,6 +27,18 @@ interface SaleData {
 export const generateSaleReceipt = (saleData: SaleData, userProfile: any) => {
   const doc = new jsPDF();
   
+  // Safe date parsing
+  let saleDate: Date;
+  if (!saleData.timestamp) {
+    saleDate = new Date();
+  } else if (typeof saleData.timestamp?.toDate === 'function') {
+    saleDate = saleData.timestamp.toDate();
+  } else if (saleData.timestamp instanceof Date) {
+    saleDate = saleData.timestamp;
+  } else {
+    saleDate = new Date(saleData.timestamp);
+  }
+
   // Header
   doc.setFontSize(20);
   doc.text('SALES RECEIPT', 105, 20, { align: 'center' });
@@ -36,10 +49,10 @@ export const generateSaleReceipt = (saleData: SaleData, userProfile: any) => {
   doc.text('Electronics Store Management', 20, 50);
   
   // Receipt details
-  doc.text(`Receipt Date: ${saleData.timestamp.toLocaleDateString()}`, 20, 70);
-  doc.text(`Receipt Time: ${saleData.timestamp.toLocaleTimeString()}`, 20, 80);
-  doc.text(`Seller: ${userProfile?.name || 'N/A'}`, 20, 90);
-  doc.text(`Customer: ${saleData.buyerName}`, 20, 100);
+  doc.text(`Receipt Date: ${saleDate.toLocaleDateString()}`, 20, 70);
+  doc.text(`Receipt Time: ${saleDate.toLocaleTimeString()}`, 20, 80);
+  doc.text(`Seller: ${saleData.sellerName || userProfile?.name || 'N/A'}`, 20, 90);
+  doc.text(`Customer: ${saleData.buyerName || 'Walk-in Customer'}`, 20, 100);
   
   // Line separator
   doc.line(20, 110, 190, 110);
