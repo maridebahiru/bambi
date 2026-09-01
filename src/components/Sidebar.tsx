@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import mafLogo from '../asset/maf.png';
 
 interface SidebarProps {
   userRole?: 'admin' | 'seller' | string;
@@ -90,12 +91,15 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole, isCollapsed, onToggleCollap
           {/* Header & Toggle Button */}
           <div className="flex items-center justify-between mb-8 mt-12 lg:mt-2">
             {!isCollapsed ? (
-              <div className="overflow-hidden">
-                <h1 className="text-xl font-bold truncate">Shop Management</h1>
-                <p className="text-slate-400 text-xs truncate">Store System</p>
+              <div className="flex items-center gap-3 overflow-hidden">
+                <img src={mafLogo} alt="MAF Computers Logo" className="w-10 h-10 object-contain rounded-lg bg-slate-800 p-1 flex-shrink-0" />
+                <div className="overflow-hidden">
+                  <h1 className="text-base font-bold truncate leading-tight">{t('appTitle')}</h1>
+                  <p className="text-slate-400 text-xs truncate">Computer Store</p>
+                </div>
               </div>
             ) : (
-              <div className="mx-auto font-bold text-lg text-blue-500 hidden lg:block">SM</div>
+              <img src={mafLogo} alt="MAF Computers Logo" className="w-9 h-9 object-contain rounded-lg bg-slate-800 p-1 mx-auto hidden lg:block" />
             )}
 
             {/* Desktop Collapse / Expand Toggle Button */}
@@ -118,9 +122,9 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole, isCollapsed, onToggleCollap
                   to={item.path}
                   onClick={closeMobileMenu}
                   title={isCollapsed ? item.label : undefined}
-                  className={`flex items-center ${isCollapsed ? 'lg:justify-center px-3' : 'px-4'} py-3 rounded-lg transition-colors ${
+                  className={`flex items-center ${isCollapsed ? 'lg:justify-center px-3' : 'px-4'} py-3 rounded-lg transition-all ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-md'
+                      ? 'bg-[#2138df] text-white shadow-md font-semibold border-l-4 border-[#dc831c]'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
@@ -150,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole, isCollapsed, onToggleCollap
                     type="button"
                     onClick={() => setLanguage('en')}
                     className={`px-2 py-0.5 text-xs rounded font-medium transition-colors ${
-                      language === 'en' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                      language === 'en' ? 'bg-[#2138df] text-white shadow-xs' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     EN
@@ -159,7 +163,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole, isCollapsed, onToggleCollap
                     type="button"
                     onClick={() => setLanguage('am')}
                     className={`px-2 py-0.5 text-xs rounded font-medium transition-colors ${
-                      language === 'am' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                      language === 'am' ? 'bg-[#2138df] text-white shadow-xs' : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     አማርኛ

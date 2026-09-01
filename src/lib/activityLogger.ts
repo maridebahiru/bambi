@@ -12,7 +12,9 @@ export type ActivityAction =
   | 'DELETE_USER'
   | 'ADD_PRODUCT'
   | 'EDIT_PRODUCT'
-  | 'DELETE_PRODUCT';
+  | 'DELETE_PRODUCT'
+  | 'SYSTEM_BACKUP'
+  | 'SYSTEM_RESTORE';
 
 export interface ActivityLogItem {
   id?: string;

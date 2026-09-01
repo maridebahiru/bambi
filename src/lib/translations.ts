@@ -12,7 +12,7 @@ export const translations: Record<Language, Record<string, string>> = {
     settings: 'Settings',
     receipts: 'Receipts',
     logout: 'Logout',
-    appTitle: 'Shop Management',
+    appTitle: 'MAF Computers',
 
     // POS & Sales Interface
     quickSale: 'Quick Sale',
@@ -83,7 +83,7 @@ export const translations: Record<Language, Record<string, string>> = {
     settings: 'ቅንብሮች',
     receipts: 'ደረሰኞች',
     logout: 'ውጣ',
-    appTitle: 'የሱቅ መቆጣጠሪያ',
+    appTitle: 'MAF ኮምፒዩተርስ',
 
     // POS & Sales Interface
     quickSale: 'ፈጣን ሽያጭ',

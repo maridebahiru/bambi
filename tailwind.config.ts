@@ -27,6 +27,16 @@ export default {
   },
 		extend: {
 			colors: {
+				brand: {
+					blue: '#2138df',
+					'blue-hover': '#182bbd',
+					'blue-light': '#eaeeff',
+					amber: '#dc831c',
+					'amber-hover': '#b96a12',
+					'amber-light': '#fef4e8',
+					gray: '#e1e1e1',
+					'gray-light': '#f7f7f7',
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

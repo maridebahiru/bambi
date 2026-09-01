@@ -112,6 +112,10 @@ const ActivityLog: React.FC = () => {
       case 'EDIT_USER':
       case 'DELETE_USER':
         return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200">User Account</span>;
+      case 'SYSTEM_BACKUP':
+        return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 border border-cyan-200">Auto Backup</span>;
+      case 'SYSTEM_RESTORE':
+        return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200">Data Restore</span>;
       default:
         return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200">{action}</span>;
     }

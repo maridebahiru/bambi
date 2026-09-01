@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, User, Lock } from 'lucide-react';
 import SignUp from './SignUp';
+import mafLogo from '../asset/maf.png';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -38,8 +39,9 @@ const Login = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Shop Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to access your shop dashboard</p>
+          <img src={mafLogo} alt="MAF Computers Logo" className="w-20 h-20 mx-auto mb-3 object-contain rounded-xl shadow-sm p-1 bg-slate-50 border border-slate-100" />
+          <h1 className="text-2xl font-bold text-gray-900">MAF Computers</h1>
+          <p className="text-sm text-gray-500 mt-1">Sign in to access your store dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -86,7 +88,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center font-medium"
+            className="w-full bg-[#2138df] text-white py-2.5 px-4 rounded-lg hover:bg-[#182bbd] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-md flex items-center justify-center font-medium"
           >
             <LogIn size={16} className="mr-2" />
             {loading ? 'Signing in...' : 'Sign In'}

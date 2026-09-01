@@ -142,7 +142,7 @@ const SellerDailySales = () => {
         </head>
         <body>
           <div class="header">
-            <h1>EthioMerkato Store</h1>
+            <h1>MAF Computers</h1>
             <h2>Daily Sales Report</h2>
             <h3>Seller: ${sellerName}</h3>
           </div>

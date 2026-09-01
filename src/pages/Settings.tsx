@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Sun, Moon, Receipt, Percent, Globe } from 'lucide-react';
 import { getTaxSettings, saveTaxSettings, TaxSettings } from '../lib/taxSettings';
 import CategoryManager from '../components/CategoryManager';
+import AutoBackupManager from '../components/AutoBackupManager';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -242,6 +243,9 @@ const Settings = () => {
           </div>
         </form>
       </div>
+
+      {/* Auto Backup & Data Recovery Section */}
+      <AutoBackupManager />
 
       {/* Category Management Section */}
       <CategoryManager />

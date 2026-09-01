@@ -19,6 +19,7 @@ import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { checkAndTriggerAutoBackup } from "./lib/backupService";
 
 // Create QueryClient outside of component to avoid recreation on each render
 const queryClient = new QueryClient({
@@ -35,6 +36,12 @@ const AppContent: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
     return localStorage.getItem('sidebarCollapsed') === 'true';
   });
+
+  React.useEffect(() => {
+    if (user && userProfile) {
+      checkAndTriggerAutoBackup().catch((err) => console.error('Auto Backup Error:', err));
+    }
+  }, [user, userProfile]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => {
