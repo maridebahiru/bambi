@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, User, Lock } from 'lucide-react';
 import SignUp from './SignUp';
-import mafLogo from '../asset/maf.png';
+import bambiLogo from '../asset/bambi.png';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -39,8 +39,8 @@ const Login = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <img src={mafLogo} alt="MAF Computers Logo" className="w-20 h-20 mx-auto mb-3 object-contain rounded-xl shadow-sm p-1 bg-slate-50 border border-slate-100" />
-          <h1 className="text-2xl font-bold text-gray-900">MAF Computers</h1>
+          <img src={bambiLogo} alt="BAMBI STORE Logo" className="w-20 h-20 mx-auto mb-3 object-contain rounded-xl shadow-sm p-1 bg-slate-50 border border-slate-100" />
+          <h1 className="text-2xl font-bold text-gray-900">BAMBI STORE</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to access your store dashboard</p>
         </div>
 

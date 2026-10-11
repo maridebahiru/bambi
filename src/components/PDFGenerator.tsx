@@ -45,8 +45,8 @@ export const generateSaleReceipt = (saleData: SaleData, userProfile: any) => {
   
   // Store info
   doc.setFontSize(12);
-  doc.text('MAF Computers', 20, 40);
-  doc.text('Computer & Electronics Store', 20, 50);
+  doc.text('BAMBI STORE', 20, 40);
+  doc.text('Retail & Inventory Store', 20, 50);
   
   // Receipt details
   doc.text(`Receipt Date: ${saleDate.toLocaleDateString()}`, 20, 70);

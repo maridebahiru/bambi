@@ -24,19 +24,6 @@ interface ParsedProductRow {
   error?: string;
 }
 
-const CATEGORIES = [
-  'Mobiles',
-  'Smart Phones',
-  'Non-Smart Phones',
-  'Laptops',
-  'Computers & Desktops',
-  'Mobile Accessories',
-  'Glasses',
-  'Covers',
-  'Chargers',
-  'Electrical Tools'
-];
-
 const ImportProductsModal: React.FC<ImportProductsModalProps> = ({ isOpen, onClose, onProductsImported }) => {
   const [file, setFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedProductRow[]>([]);

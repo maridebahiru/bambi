@@ -8,6 +8,7 @@ import EditProductModal from './EditProductModal';
 import ImportProductsModal from './ImportProductsModal';
 import CategoryManager from './CategoryManager';
 import { useAuth } from '../contexts/AuthContext';
+import { useCategories } from '../contexts/CategoryContext';
 
 interface Product {
   id: string;
@@ -30,11 +31,12 @@ const ProductTable = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [categories, setCategories] = useState<string[]>([]);
+  const { categories, refreshCategories } = useCategories();
   const { userProfile } = useAuth();
 
   useEffect(() => {
     fetchProducts();
+    refreshCategories();
   }, []);
 
   const fetchProducts = async () => {
@@ -46,10 +48,6 @@ const ProductTable = () => {
         ...doc.data()
       })) as Product[];
       setProducts(productsData);
-
-      // Extract unique categories
-      const uniqueCategories = [...new Set(productsData.map(product => product.category))];
-      setCategories(uniqueCategories);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -78,7 +76,9 @@ const ProductTable = () => {
     const nameMatch = product.name.toLowerCase().includes(term);
     const codeMatch = product.code ? product.code.toLowerCase().includes(term) : false;
     const searchMatch = nameMatch || codeMatch;
-    const categoryMatch = selectedCategory ? product.category === selectedCategory : true;
+    const categoryMatch = selectedCategory
+      ? product.category?.trim().toLowerCase() === selectedCategory.trim().toLowerCase()
+      : true;
     return searchMatch && categoryMatch;
   });
 
@@ -132,7 +132,7 @@ const ProductTable = () => {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[200px]"
             >
               <option value="">All Categories</option>
               {categories.map((category) => (
@@ -243,12 +243,16 @@ const ProductTable = () => {
                   onClick={() => {
                     setIsCategoryModalOpen(false);
                     fetchProducts();
+                    refreshCategories();
                   }}
                   className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 z-10"
                 >
                   <X size={24} />
                 </button>
-                <CategoryManager onCategoriesChanged={fetchProducts} />
+                <CategoryManager onCategoriesChanged={() => {
+                  fetchProducts();
+                  refreshCategories();
+                }} />
               </div>
             </div>
           )}

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import mafLogo from '../asset/maf.png';
+import bambiLogo from '../asset/bambi.png';
 
 interface SidebarProps {
   userRole?: 'admin' | 'seller' | string;
@@ -92,14 +92,14 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole, isCollapsed, onToggleCollap
           <div className="flex items-center justify-between mb-8 mt-12 lg:mt-2">
             {!isCollapsed ? (
               <div className="flex items-center gap-3 overflow-hidden">
-                <img src={mafLogo} alt="MAF Computers Logo" className="w-10 h-10 object-contain rounded-lg bg-slate-800 p-1 flex-shrink-0" />
+                <img src={bambiLogo} alt="BAMBI STORE Logo" className="w-10 h-10 object-contain rounded-lg bg-slate-800 p-1 flex-shrink-0" />
                 <div className="overflow-hidden">
                   <h1 className="text-base font-bold truncate leading-tight">{t('appTitle')}</h1>
-                  <p className="text-slate-400 text-xs truncate">Computer Store</p>
+                  <p className="text-slate-400 text-xs truncate">BAMBI STORE</p>
                 </div>
               </div>
             ) : (
-              <img src={mafLogo} alt="MAF Computers Logo" className="w-9 h-9 object-contain rounded-lg bg-slate-800 p-1 mx-auto hidden lg:block" />
+              <img src={bambiLogo} alt="BAMBI STORE Logo" className="w-9 h-9 object-contain rounded-lg bg-slate-800 p-1 mx-auto hidden lg:block" />
             )}
 
             {/* Desktop Collapse / Expand Toggle Button */}

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Tag, Plus, Edit, Trash2, Check, X, FolderCheck } from 'lucide-react';
-import { getCategories, addCategory, updateCategory, deleteCategory } from '../lib/categoryService';
+import { addCategory, updateCategory, deleteCategory } from '../lib/categoryService';
+import { useCategories } from '../contexts/CategoryContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface CategoryManagerProps {
@@ -8,35 +9,13 @@ interface CategoryManagerProps {
 }
 
 const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesChanged }) => {
-  const [categories, setCategories] = useState<string[]>([]);
+  const { categories, refreshCategories, loading } = useCategories();
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editInputValue, setEditInputValue] = useState('');
-  const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [updating, setUpdating] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    setLoading(true);
-    try {
-      const cats = await getCategories();
-      setCategories(cats);
-    } catch (error) {
-      console.error('Error loading categories:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load categories",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +32,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesChanged }
     try {
       await addCategory(newCategory.trim());
       setNewCategory('');
-      await fetchCategories();
+      await refreshCategories();
       if (onCategoriesChanged) onCategoriesChanged();
       
       toast({
@@ -101,7 +80,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesChanged }
       await updateCategory(oldName, editInputValue.trim());
       setEditingCategory(null);
       setEditInputValue('');
-      await fetchCategories();
+      await refreshCategories();
       if (onCategoriesChanged) onCategoriesChanged();
 
       toast({
@@ -123,7 +102,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onCategoriesChanged }
     if (confirm(`Are you sure you want to delete category "${categoryName}"? Any products in this category will be set to "Uncategorized".`)) {
       try {
         await deleteCategory(categoryName);
-        await fetchCategories();
+        await refreshCategories();
         if (onCategoriesChanged) onCategoriesChanged();
         
         toast({

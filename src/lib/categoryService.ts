@@ -11,14 +11,14 @@ export interface CategoryItem {
 export const getCategories = async (): Promise<string[]> => {
   try {
     const snap = await getDocs(collection(db, 'categories'));
-    const firestoreCategories = snap.docs.map(d => d.data().name as string).filter(Boolean);
+    const firestoreCategories = snap.docs.map(d => ((d.data().name as string) || '').trim()).filter(Boolean);
     
     // Also merge existing categories from products so no active product category is lost
     const productsSnap = await getDocs(collection(db, 'products'));
-    const productCategories = productsSnap.docs.map(d => d.data().category as string).filter(Boolean);
+    const productCategories = productsSnap.docs.map(d => ((d.data().category as string) || '').trim()).filter(Boolean);
 
     const merged = Array.from(new Set([...firestoreCategories, ...productCategories]));
-    return merged.sort((a, b) => a.localeCompare(b));
+    return merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   } catch (error) {
     console.error('Error fetching categories:', error);
     return [];

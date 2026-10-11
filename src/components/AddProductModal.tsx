@@ -4,7 +4,8 @@ import { X, Truck, Plus } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useToast } from "@/hooks/use-toast";
-import { getCategories, addCategory } from '../lib/categoryService';
+import { addCategory } from '../lib/categoryService';
+import { useCategories } from '../contexts/CategoryContext';
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -23,7 +24,7 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
     supplierName: '',
     invoiceNumber: ''
   });
-  const [categories, setCategories] = useState<string[]>([]);
+  const { categories, refreshCategories } = useCategories();
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,14 +32,9 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
 
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
+      refreshCategories();
     }
-  }, [isOpen]);
-
-  const fetchCategories = async () => {
-    const cats = await getCategories();
-    setCategories(cats);
-  };
+  }, [isOpen, refreshCategories]);
 
   const handleCreateInlineCategory = async () => {
     if (!customCategoryInput.trim()) {
@@ -52,7 +48,7 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }: AddProductModalPro
 
     try {
       const addedCat = await addCategory(customCategoryInput.trim());
-      await fetchCategories();
+      await refreshCategories();
       setFormData(prev => ({ ...prev, category: addedCat }));
       setCustomCategoryInput('');
       setIsAddingNewCategory(false);

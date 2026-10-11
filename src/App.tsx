@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { CategoryProvider } from "./contexts/CategoryContext";
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
 import Home from "./pages/Home";
@@ -130,9 +131,11 @@ const App: React.FC = () => {
         <AuthProvider>
           <LanguageProvider>
             <CurrencyProvider>
-              <AppContent />
-              <Toaster />
-              <Sonner />
+              <CategoryProvider>
+                <AppContent />
+                <Toaster />
+                <Sonner />
+              </CategoryProvider>
             </CurrencyProvider>
           </LanguageProvider>
         </AuthProvider>

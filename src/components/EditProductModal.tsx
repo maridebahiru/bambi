@@ -4,7 +4,8 @@ import { X, Plus } from 'lucide-react';
 import { updateDoc, addDoc, collection, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useToast } from "@/hooks/use-toast";
-import { getCategories, addCategory } from '../lib/categoryService';
+import { addCategory } from '../lib/categoryService';
+import { useCategories } from '../contexts/CategoryContext';
 
 interface Product {
   id: string;
@@ -33,7 +34,7 @@ const EditProductModal = ({ isOpen, onClose, onProductUpdated, product }: EditPr
     interestPercent: 0,
     stock: 0
   });
-  const [categories, setCategories] = useState<string[]>([]);
+  const { categories, refreshCategories } = useCategories();
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,14 +42,9 @@ const EditProductModal = ({ isOpen, onClose, onProductUpdated, product }: EditPr
 
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
+      refreshCategories();
     }
-  }, [isOpen]);
-
-  const fetchCategories = async () => {
-    const cats = await getCategories();
-    setCategories(cats);
-  };
+  }, [isOpen, refreshCategories]);
 
   const handleCreateInlineCategory = async () => {
     if (!customCategoryInput.trim()) {
@@ -62,7 +58,7 @@ const EditProductModal = ({ isOpen, onClose, onProductUpdated, product }: EditPr
 
     try {
       const addedCat = await addCategory(customCategoryInput.trim());
-      await fetchCategories();
+      await refreshCategories();
       setFormData(prev => ({ ...prev, category: addedCat }));
       setCustomCategoryInput('');
       setIsAddingNewCategory(false);
